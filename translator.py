@@ -122,7 +122,7 @@ def translate_llm(text, source='auto', target='zh-CN', api_key='', base_url='', 
         'temperature': 0.3,
     }
 
-    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+    resp = requests.post(url, json=payload, headers=headers, timeout=120)
     resp.raise_for_status()
     data = resp.json()
     if 'choices' not in data:

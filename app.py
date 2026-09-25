@@ -247,7 +247,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
             results.extend(batch_results)
         elif engine == 'llm':
             # LLM: use smaller batches (3) for progress + speed balance
-            llm_batch = 3
+            llm_batch = 20
             for li in range(0, len(need_indices), llm_batch):
                 sub_indices = need_indices[li:li+llm_batch]
                 sub_texts = [batch[idx] for idx in sub_indices]
