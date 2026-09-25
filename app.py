@@ -178,6 +178,22 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     errors = []
     batch_size = 10
 
+    def _is_already_target(text, target):
+        """Check if text is already in the target language."""
+        if target.startswith('zh'):
+            # Has Chinese characters = already Chinese
+            return any('一' <= c <= '鿿' for c in text)
+        if target == 'en':
+            # Has Latin chars and no CJK = likely already English
+            has_latin = any('a' <= c.lower() <= 'z' for c in text)
+            has_cjk = any('一' <= c <= '鿿' for c in text)
+            return has_latin and not has_cjk
+        if target == 'ja':
+            return any('぀' <= c <= 'ゟ' or '゠' <= c <= 'ヿ' for c in text)
+        if target == 'ko':
+            return any('가' <= c <= '힯' for c in text)
+        return False
+
     for i in range(0, total, batch_size):
         batch = texts[i:i + batch_size]
         separator = '\n---\n'
