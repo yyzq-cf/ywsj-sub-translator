@@ -355,14 +355,30 @@ def retranslate_entry(task_id):
 @app.route('/api/download/<task_id>')
 @login_required
 def download(task_id):
+    """Download translated file with optional bilingual mode."""
     task = tasks.get(task_id)
     if not task:
         return jsonify({'error': '任务不存在'}), 404
     if task['status'] != 'done':
         return jsonify({'error': '翻译尚未完成'}), 400
+
+    subtitle_mode = request.args.get('mode', 'translated')
+    order = request.args.get('order', 'original_first')
+
+    entries = task.get('entries', [])
+    original_entries = task.get('original_entries', [])
+    out_fmt = task.get('output_fmt', task.get('fmt', 'srt'))
+    orig_content = task.get('content', '')
+
+    if subtitle_mode == 'bilingual':
+        result = rebuild_bilingual(entries, original_entries, out_fmt, orig_content, mode='bilingual', order=order)
+        suffix = '.bilingual'
+    else:
+        result = rebuild(entries, out_fmt, original_content=orig_content)
+        suffix = ''
+
     base_name = os.path.splitext(task['filename'])[0]
-    out_filename = f'{base_name}.{task["target"]}.{task["fmt"]}'
-    result = task['result']
+    out_filename = f'{base_name}.{task["target"]}{suffix}.{out_fmt}'
     encoded = quote(out_filename)
     ascii_name = encoded.replace('%', 'X')[:50]
     cd = 'attachment; filename="' + ascii_name + '"; filename*=UTF-8' + chr(39) + chr(39) + encoded
