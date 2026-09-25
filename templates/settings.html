@@ -148,6 +148,11 @@
             <div class="form-group">
                 <label>选择服务商</label>
                 <select id="tapiPreset" onchange="onTapiPresetChange()">
+    var keyLabels = document.querySelectorAll('#tapiAddForm .form-group label');
+    if (keyLabels.length >= 2) {
+        keyLabels[0].innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
+        keyLabels[1].textContent = p.secret_name;
+    }
                     <option value="">— 选择 —</option>
                 </select>
             </div>
@@ -401,9 +406,12 @@ function onTapiPresetChange() {
     if (!sel.value) return;
     var p = JSON.parse(sel.value);
     document.getElementById('tapiName').value = p.name;
-    var keyLabel = document.querySelector('label[for!=""]'); // not used
-    var link = document.getElementById('tapiKeyLink');
-    if (p.key_url) { link.href = p.key_url; link.style.display = 'inline'; } else { link.style.display = 'none'; }
+    // Update labels with preset-specific names
+    var keyLabels = document.querySelectorAll('#tapiAddForm .form-group label');
+    if (keyLabels.length >= 2) {
+        keyLabels[0].innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
+        keyLabels[1].textContent = p.secret_name;
+    }
 }
 
 var tapiEditingId = null;
