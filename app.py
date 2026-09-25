@@ -197,6 +197,14 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     task['content'] = content
     task['detected_fmt'] = detected_fmt
 
+    def _log(msg):
+        import datetime
+        ts = datetime.datetime.now().strftime('%H:%M:%S')
+        task['logs'].append(f'[{ts}] {msg}')
+        if len(task['logs']) > 200:
+            task['logs'] = task['logs'][-200:]
+
+    _log(f'开始翻译: {total} 条字幕, 引擎={engine}, 目标语言={target}')
     if engine == 'llm':
         from translator import translate_llm
         func = translate_llm
@@ -226,6 +234,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         elif engine == 'deepl':
             return func(text, source=source, target=target, api_key=api_key)
         elif engine == 'llm':
+            _log(f'第 {i+1}-{min(i+len(batch), total)} 条: 发送到LLM翻译...')
             return func(text, source=source, target=target, api_key=api_key, base_url=base_url, model=model)
         else:
             return func(text, source=source, target=target, api_key=api_key)
@@ -244,8 +253,10 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
                 need_indices.append(len(batch_results) - 1)
 
         if not need_translate:
+            _log(f'第 {i+1}-{min(i+len(batch), total)} 条: 已是目标语言, 跳过')
             results.extend(batch_results)
         elif engine == 'llm':
+            _log(f'第 {i+1}-{min(i+len(batch), total)} 条: 发送到LLM翻译...')
             # LLM: use smaller batches (3) for progress + speed balance
             llm_batch = 10
             for li in range(0, len(need_indices), llm_batch):
@@ -293,6 +304,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
                             task['done'] = min(len(results) + idx + 1, total)
                         except Exception as e:
                             errors.append(f'Line {i+idx+1}: {str(e)}')
+                            _log(f'第 {i+idx+1} 条翻译失败: {str(e)[:50]}')
                 import time
                 time.sleep(0.3)
             except Exception as e:
@@ -318,6 +330,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     task['status'] = 'done'
     task['done'] = total
     task['output_fmt'] = out_fmt
+    _log(f'翻译完成! 共 {total} 条, 错误 {len(errors)} 条')
 
 @app.route('/api/translate', methods=['POST'])
 @login_required
@@ -367,7 +380,7 @@ def start_translate():
     task_id = str(uuid.uuid4())[:8]
     tasks[task_id] = {
         'status': 'pending', 'total': len(entries), 'done': 0,
-        'result': None, 'errors': [], 'filename': filename,
+        'result': None, 'errors': [], 'logs': [], 'filename': filename,
         'target': target, 'fmt': detected_fmt if output_format == 'auto' else output_format,
     }
     t = threading.Thread(target=run_translation_task, args=(
@@ -387,6 +400,7 @@ def progress(task_id):
     resp = {
         'status': task['status'], 'total': task['total'],
         'done': task['done'], 'errors': task['errors'],
+        'logs': task.get('logs', []),
     }
     if task['status'] in ('translating', 'done') and 'entries' in task:
         resp['entries'] = task['entries']
@@ -450,6 +464,14 @@ def retranslate_entry(task_id):
         return jsonify({'error': '索引超出范围'}), 400
     original_entries = task.get('original_entries', [])
     original_text = original_entries[index]['text'] if index < len(original_entries) else entries[index]['text']
+    def _log(msg):
+        import datetime
+        ts = datetime.datetime.now().strftime('%H:%M:%S')
+        task['logs'].append(f'[{ts}] {msg}')
+        if len(task['logs']) > 200:
+            task['logs'] = task['logs'][-200:]
+
+    _log(f'开始翻译: {total} 条字幕, 引擎={engine}, 目标语言={target}')
     if engine == 'llm':
         from translator import translate_llm
         func = translate_llm
@@ -462,6 +484,7 @@ def retranslate_entry(task_id):
         elif engine == 'deepl':
             translated = func(original_text, source=source, target=target, api_key=api_key)
         elif engine == 'llm':
+            _log(f'第 {i+1}-{min(i+len(batch), total)} 条: 发送到LLM翻译...')
             translated = func(original_text, source=source, target=target, api_key=api_key, base_url=base_url, model=model)
         else:
             translated = func(original_text, source=source, target=target, api_key=api_key)

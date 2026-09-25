@@ -89,6 +89,16 @@
         .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
         .progress-text { color: var(--muted); font-size: 13px; margin-top: 8px; text-align: center; }
         .timer-text { color: var(--accent); font-size: 13px; margin-top: 4px; text-align: center; font-weight: 600; }
+        .log-box {
+            margin-top: 12px; max-height: 150px; overflow-y: auto;
+            background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+            padding: 8px 12px; font-family: 'Courier New', monospace; font-size: 12px;
+            display: none;
+        }
+        .log-box.show { display: block; }
+        .log-line { color: var(--muted); line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .log-line.error { color: var(--error); }
+        .log-line.success { color: var(--success); }
         .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 0; }
         .toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -249,6 +259,7 @@
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div class="progress-text" id="progressText">翻译中...</div>
         <div class="timer-text" id="timerText"></div>
+        <div class="log-box" id="logBox"></div>
     </div>
 
     <!-- Preview Card -->
@@ -516,6 +527,8 @@
         btn.disabled = true; btn.textContent = '⏳ 翻译中...';
         document.getElementById('editorSection').classList.remove('show');
         document.getElementById('previewSection').classList.remove('show');
+        document.getElementById('logBox').innerHTML = '';
+        document.getElementById('logBox').classList.remove('show');
         showProgress('提交翻译任务...');
         startTimer();
 
@@ -589,6 +602,20 @@
                         text.textContent = '正在连接翻译引擎...';
                     } else {
                         text.textContent = '翻译进度 ' + done + '/' + tot + ' (' + pct + '%)';
+                    }
+                    // Update logs
+                    if (data.logs && data.logs.length > 0) {
+                        var logBox = document.getElementById('logBox');
+                        logBox.classList.add('show');
+                        var html = '';
+                        data.logs.forEach(function(line) {
+                            var cls = 'log-line';
+                            if (line.indexOf('失败') >= 0 || line.indexOf('错误') >= 0) cls += ' error';
+                            if (line.indexOf('完成') >= 0) cls += ' success';
+                            html += '<div class="' + cls + '">' + esc(line) + '</div>';
+                        });
+                        logBox.innerHTML = html;
+                        logBox.scrollTop = logBox.scrollHeight;
                     }
 
                     // Live render entries
