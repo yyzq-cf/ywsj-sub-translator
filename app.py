@@ -10,7 +10,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
 
 from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
-from translator import ENGINES, batch_translate, test_llm_connection, LLM_PRESETS
+from translator import ENGINES, batch_translate, test_llm_connection, LLM_PRESETS, fetch_llm_models
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -569,6 +569,38 @@ def test_llm():
 @login_required
 def llm_presets():
     return jsonify(LLM_PRESETS)
+
+
+@app.route('/api/llm-models', methods=['POST'])
+@login_required
+def get_llm_models():
+    data = request.get_json()
+    base_url = data.get('base_url', '').strip()
+    api_key = data.get('api_key', '').strip()
+    config_id = data.get('config_id', '')
+
+    if config_id:
+        for cfg in load_llm_configs():
+            if cfg['id'] == config_id:
+                base_url = cfg.get('base_url', '')
+                api_key = cfg.get('api_key', '')
+                break
+
+    if not base_url or not api_key:
+        return jsonify({'error': '请先填写API地址和Key'}), 400
+
+    try:
+        models = fetch_llm_models(base_url, api_key)
+        return jsonify({'ok': True, 'models': models})
+    except requests.exceptions.HTTPError as e:
+        code = e.response.status_code
+        try:
+            err_msg = e.response.json().get('message', str(e))
+        except:
+            err_msg = str(e)
+        return jsonify({'error': f'HTTP {code}: {err_msg}'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 200
 
 
 @app.route('/health')

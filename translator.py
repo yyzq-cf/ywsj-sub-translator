@@ -159,6 +159,22 @@ def test_llm_connection(base_url, api_key, model):
         return False, str(e)
 
 
+def fetch_llm_models(base_url, api_key):
+    """Fetch available models from OpenAI-compatible /v1/models endpoint."""
+    url = base_url.rstrip('/') + '/v1/models'
+    headers = {'Authorization': f'Bearer {api_key}'}
+    resp = requests.get(url, headers=headers, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    models = []
+    for m in data.get('data', []):
+        mid = m.get('id', '')
+        if mid:
+            models.append(mid)
+    models.sort()
+    return models
+
+
 # Built-in LLM presets
 LLM_PRESETS = [
     {'name': '硅基流动 SiliconFlow', 'base_url': 'https://api.siliconflow.cn', 'model': 'Qwen/Qwen2.5-7B-Instruct'},

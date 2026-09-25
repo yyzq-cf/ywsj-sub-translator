@@ -118,8 +118,11 @@
                 <input type="password" id="cfgApiKey" placeholder="sk-...">
             </div>
             <div class="form-group">
-                <label>模型名称 *</label>
-                <input type="text" id="cfgModel" placeholder="gpt-4o-mini">
+                <label>模型名称 * <button type="button" class="btn btn-secondary btn-sm" onclick="fetchModels()" style="display:inline; padding:2px 8px; font-size:11px;">📡 获取模型列表</button></label>
+                <div id="modelInputWrap">
+                    <input type="text" id="cfgModel" placeholder="gpt-4o-mini">
+                </div>
+                <select id="cfgModelSelect" style="display:none; margin-top:4px;" onchange="document.getElementById('cfgModel').value=this.value"></select>
             </div>
         </div>
         <div class="btn-row">
@@ -287,6 +290,36 @@ function testConfigById(id) {
         if (data.ok) { showToast(data.message, 'success'); }
         else { showToast(data.message || '测试失败', 'error'); }
     });
+}
+
+function fetchModels() {
+    var baseUrl = document.getElementById('cfgBaseUrl').value.trim();
+    var apiKey = document.getElementById('cfgApiKey').value.trim();
+    if (!baseUrl) { showToast('请先填写API地址', 'error'); return; }
+    if (!apiKey) { showToast('请先填写API Key', 'error'); return; }
+    showToast('获取模型列表中...', '');
+    fetch('/api/llm-models', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ base_url: baseUrl, api_key: apiKey })
+    }).then(function(r){return r.json();}).then(function(data){
+        if (data.ok && data.models.length > 0) {
+            var sel = document.getElementById('cfgModelSelect');
+            sel.innerHTML = '';
+            data.models.forEach(function(m) {
+                var opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                if (m === document.getElementById('cfgModel').value) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.style.display = 'block';
+            if (!document.getElementById('cfgModel').value) {
+                document.getElementById('cfgModel').value = data.models[0];
+            }
+            showToast('获取到 ' + data.models.length + ' 个模型', 'success');
+        } else {
+            showToast(data.error || '获取失败，可手动输入', 'error');
+        }
+    }).catch(function(err) { showToast(err.message, 'error'); });
 }
 
 function toggleTheme() {
