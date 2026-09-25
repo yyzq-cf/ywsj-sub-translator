@@ -498,15 +498,14 @@ function deleteTapiConfig(id, name) {
 }
 
 function editTapiConfig(id) {
-    fetch('/api/translate-api-configs').then(function(r){return r.json();}).then(function(configs){
-        var cfg = configs.find(function(c){ return c.id === id; });
-        if (!cfg) return;
+    fetch('/api/translate-api-configs/' + id + '/full').then(function(r){return r.json();}).then(function(cfg){
+        if (cfg.error) { showToast(cfg.error, 'error'); return; }
         tapiEditingId = id;
         document.getElementById('tapiFormTitle').textContent = '编辑翻译API';
         document.getElementById('tapiPreset').value = '';
         document.getElementById('tapiName').value = cfg.name || '';
-        document.getElementById('tapiKey').value = '';
-        document.getElementById('tapiSecret').value = '';
+        document.getElementById('tapiKey').value = cfg.api_key || '';
+        document.getElementById('tapiSecret').value = cfg.secret_key || '';
         document.getElementById('tapiSaveBtn').textContent = '💾 更新';
         document.getElementById('tapiAddForm').style.display = 'block';
         document.getElementById('tapiName').focus();

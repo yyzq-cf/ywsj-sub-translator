@@ -760,6 +760,15 @@ def delete_translate_api_config(config_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/translate-api-configs/<config_id>/full')
+@login_required
+def get_translate_api_config_full(config_id):
+    for cfg in load_translate_api_configs():
+        if cfg['id'] == config_id:
+            return jsonify(cfg)
+    return jsonify({'error': '配置不存在'}), 404
+
+
 @app.route('/api/translate-api-presets')
 def get_translate_api_presets():
     return jsonify(TRANSLATE_API_PRESETS)
