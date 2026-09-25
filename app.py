@@ -9,7 +9,7 @@ from urllib.parse import quote
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
 
-from subtitle_parser import parse_subtitle, rebuild
+from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
 from translator import ENGINES, batch_translate
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')

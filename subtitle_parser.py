@@ -158,6 +158,81 @@ def rebuild_ass(entries, original_content=''):
     return '\n'.join(parts) + '\n'
 
 
+def rebuild_bilingual_srt(entries, original_entries, mode='bilingual', order='original_first'):
+    """Rebuild SRT with bilingual or translation-only options."""
+    parts = []
+    for i, e in enumerate(entries, 1):
+        start = e['start'].replace('.', ',')
+        end = e['end'].replace('.', ',')
+        orig = original_entries[i-1]['text'] if i-1 < len(original_entries) else ''
+        trans = e['text']
+        if mode == 'translated':
+            text = trans
+        elif order == 'original_first':
+            text = orig + '\n' + trans
+        else:
+            text = trans + '\n' + orig
+        parts.append(f"{i}\n{start} --> {end}\n{text}")
+    return '\n\n'.join(parts) + '\n'
+
+
+def rebuild_bilingual_vtt(entries, original_entries, mode='bilingual', order='original_first'):
+    """Rebuild VTT with bilingual or translation-only options."""
+    parts = ['WEBVTT', '']
+    for i, e in enumerate(entries):
+        start = e['start'].replace(',', '.')
+        end = e['end'].replace(',', '.')
+        orig = original_entries[i]['text'] if i < len(original_entries) else ''
+        trans = e['text']
+        if mode == 'translated':
+            text = trans
+        elif order == 'original_first':
+            text = orig + '\n' + trans
+        else:
+            text = trans + '\n' + orig
+        parts.append(f"{start} --> {end}\n{text}\n")
+    return '\n'.join(parts)
+
+
+def rebuild_bilingual_ass(entries, original_entries, original_content='', mode='bilingual', order='original_first'):
+    """Rebuild ASS with bilingual or translation-only options."""
+    header = []
+    in_events = False
+    for line in original_content.split('\n'):
+        if line.strip().startswith('[Events]'):
+            in_events = True
+            header.append('[Events]')
+            continue
+        if not in_events:
+            header.append(line)
+            continue
+        if line.strip().startswith('Format:'):
+            header.append(line)
+            break
+    parts = header
+    for i, e in enumerate(entries):
+        orig = original_entries[i]['text'] if i < len(original_entries) else ''
+        trans = e['text']
+        if mode == 'translated':
+            text = trans
+        elif order == 'original_first':
+            text = orig + '\\N' + trans
+        else:
+            text = trans + '\\N' + orig
+        parts.append(f"Dialogue: 0,{e['start']},{e['end']},Default,,0,0,0,,{text}")
+    return '\n'.join(parts) + '\n'
+
+
+def rebuild_bilingual(entries, original_entries, fmt, original_content='', mode='bilingual', order='original_first'):
+    """Rebuild subtitle with bilingual options."""
+    if fmt == 'vtt':
+        return rebuild_bilingual_vtt(entries, original_entries, mode, order)
+    elif fmt == 'ass':
+        return rebuild_bilingual_ass(entries, original_entries, original_content, mode, order)
+    else:
+        return rebuild_bilingual_srt(entries, original_entries, mode, order)
+
+
 def rebuild(entries, fmt, original_content=''):
     """Rebuild subtitle in the given format."""
     if fmt == 'vtt':

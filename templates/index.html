@@ -266,8 +266,16 @@
                 <span class="card-title" style="margin-bottom:0;">📝 翻译结果（可编辑）</span>
                 <span class="stats" id="editorStats"></span>
             </div>
-            <div class="btn-row" style="margin-top:0;">
+            <div class="btn-row" style="margin-top:0; align-items:center; flex-wrap:wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="scrollToTop()">⬆️ 顶部</button>
+                <select id="subtitleMode" style="width:auto; padding:6px 10px; font-size:13px;">
+                    <option value="translated">仅译文</option>
+                    <option value="bilingual">双语字幕</option>
+                </select>
+                <select id="subtitleOrder" style="width:auto; padding:6px 10px; font-size:13px; display:none;">
+                    <option value="original_first">原文在上</option>
+                    <option value="translated_first">译文在上</option>
+                </select>
                 <button class="btn btn-sm" onclick="downloadResult()" id="downloadBtn">💾 下载字幕</button>
             </div>
         </div>
@@ -671,7 +679,10 @@
         if (!currentTaskId) { showToast('没有可下载的结果', 'error'); return; }
         var btn = document.getElementById('downloadBtn');
         btn.textContent = '⬇️ 下载中...'; btn.disabled = true;
-        fetch('/api/download/' + currentTaskId)
+        var mode = document.getElementById('subtitleMode').value;
+        var order = document.getElementById('subtitleOrder').value;
+        var url = '/api/download/' + currentTaskId + '?mode=' + mode + '&order=' + order;
+        fetch(url)
             .then(function(r) {
                 if (!r.ok) throw new Error('下载失败');
                 var disposition = r.headers.get('Content-Disposition') || '';
@@ -691,6 +702,12 @@
     };
 
     window.scrollToTop = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+    // Subtitle mode change -> show/hide order selector
+    document.getElementById('subtitleMode').addEventListener('change', function() {
+        var orderSel = document.getElementById('subtitleOrder');
+        orderSel.style.display = (this.value === 'bilingual') ? 'block' : 'none';
+    });
 
     // ===== User menu =====
     function checkAuthAndShowMenu() {
