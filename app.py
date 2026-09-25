@@ -10,7 +10,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
 
 from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
-from translator import ENGINES, batch_translate
+from translator import ENGINES, batch_translate, test_llm_connection
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -288,10 +288,15 @@ def start_translate():
     model = request.form.get('model', 'gpt-4o-mini')
     output_format = request.form.get('format', 'auto')
 
-    # LLM engine uses its own base_url and api_key
-    if engine == 'llm':
-        api_key = request.form.get('llm_api_key', '')
-        base_url = request.form.get('llm_base_url', '')
+    # LLM engine: load config from saved configs
+    llm_config_id = request.form.get('llm_config_id', '')
+    if engine == 'llm' and llm_config_id:
+        for cfg in load_llm_configs():
+            if cfg['id'] == llm_config_id:
+                api_key = cfg.get('api_key', '')
+                base_url = cfg.get('base_url', '')
+                model = cfg.get('model', 'gpt-4o-mini')
+                break
 
     try:
         entries, detected_fmt = parse_subtitle(filename, content)
@@ -364,8 +369,18 @@ def retranslate_entry(task_id):
     api_key = data.get('api_key', '')
     base_url = data.get('base_url', '')
     model = data.get('model', 'gpt-4o-mini')
+    llm_config_id = data.get('llm_config_id', '')
     if index is None:
         return jsonify({'error': '缺少索引'}), 400
+
+    # Load LLM config if specified
+    if llm_config_id:
+        for cfg in load_llm_configs():
+            if cfg['id'] == llm_config_id:
+                api_key = cfg.get('api_key', '')
+                base_url = cfg.get('base_url', '')
+                model = cfg.get('model', 'gpt-4o-mini')
+                break
     entries = task.get('entries', [])
     if not (0 <= index < len(entries)):
         return jsonify({'error': '索引超出范围'}), 400
@@ -429,6 +444,100 @@ def download(task_id):
 @login_required
 def engines():
     return jsonify({k: {'label': v['label'], 'needs_key': v['needs_key']} for k, v in ENGINES.items()})
+
+
+@app.route('/api/llm-configs')
+@login_required
+def get_llm_configs():
+    configs = load_llm_configs()
+    # Mask API keys in response
+    safe = []
+    for c in configs:
+        sc = dict(c)
+        if sc.get('api_key'):
+            sc['api_key_masked'] = sc['api_key'][:8] + '...' if len(sc['api_key']) > 8 else '***'
+            sc['has_key'] = True
+        else:
+            sc['has_key'] = False
+        sc.pop('api_key', None)
+        safe.append(sc)
+    return jsonify(safe)
+
+
+@app.route('/api/llm-configs', methods=['POST'])
+@login_required
+def add_llm_config():
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    base_url = data.get('base_url', '').strip()
+    api_key = data.get('api_key', '').strip()
+    model = data.get('model', '').strip()
+    if not name or not base_url or not model:
+        return jsonify({'error': '名称、API地址、模型不能为空'}), 400
+
+    configs = load_llm_configs()
+    new_config = {
+        'id': str(uuid.uuid4())[:8],
+        'name': name,
+        'base_url': base_url,
+        'api_key': api_key,
+        'model': model,
+    }
+    configs.append(new_config)
+    save_llm_configs(configs)
+    return jsonify({'ok': True, 'id': new_config['id']})
+
+
+@app.route('/api/llm-configs/<config_id>', methods=['PUT'])
+@login_required
+def update_llm_config(config_id):
+    data = request.get_json()
+    configs = load_llm_configs()
+    for c in configs:
+        if c['id'] == config_id:
+            if 'name' in data:
+                c['name'] = data['name'].strip()
+            if 'base_url' in data:
+                c['base_url'] = data['base_url'].strip()
+            if 'model' in data:
+                c['model'] = data['model'].strip()
+            if 'api_key' in data and data['api_key']:
+                c['api_key'] = data['api_key'].strip()
+            save_llm_configs(configs)
+            return jsonify({'ok': True})
+    return jsonify({'error': '配置不存在'}), 404
+
+
+@app.route('/api/llm-configs/<config_id>', methods=['DELETE'])
+@login_required
+def delete_llm_config(config_id):
+    configs = load_llm_configs()
+    new_configs = [c for c in configs if c['id'] != config_id]
+    if len(new_configs) == len(configs):
+        return jsonify({'error': '配置不存在'}), 404
+    save_llm_configs(new_configs)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/llm-configs/test', methods=['POST'])
+@login_required
+def test_llm():
+    data = request.get_json()
+    config_id = data.get('config_id', '')
+    if config_id:
+        # Test by config ID
+        for cfg in load_llm_configs():
+            if cfg['id'] == config_id:
+                ok, msg = test_llm_connection(cfg['base_url'], cfg.get('api_key', ''), cfg['model'])
+                return jsonify({'ok': ok, 'message': msg})
+        return jsonify({'ok': False, 'message': '配置不存在'}), 404
+    base_url = data.get('base_url', '').strip()
+    api_key = data.get('api_key', '').strip()
+    model = data.get('model', '').strip()
+    if not base_url or not model:
+        return jsonify({'ok': False, 'message': 'API地址和模型不能为空'}), 400
+    ok, msg = test_llm_connection(base_url, api_key, model)
+    return jsonify({'ok': ok, 'message': msg})
 
 
 @app.route('/health')

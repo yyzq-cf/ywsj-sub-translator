@@ -233,19 +233,12 @@
             </div>
         </div>
         <div class="form-row" id="llmRow" style="display:none;">
-            <div class="form-group">
-                <label>API Base URL</label>
-                <input type="text" id="llmBaseUrl" placeholder="https://api.openai.com" value="https://api.openai.com">
+            <div class="form-group" style="flex:2;">
+                <label>LLM 模型配置</label>
+                <select id="llmConfigSelect" onchange="onLlmConfigChange()"></select>
             </div>
-            <div class="form-group">
-                <label>API Key</label>
-                <input type="password" id="llmApiKey" placeholder="sk-...">
-            </div>
-        </div>
-        <div class="form-row" id="llmModelRow" style="display:none;">
-            <div class="form-group">
-                <label>模型名称</label>
-                <input type="text" id="llmModel" placeholder="gpt-4o-mini" value="gpt-4o-mini">
+            <div class="form-group" style="flex:0 0 auto; display:flex; align-items:flex-end;">
+                <button class="btn btn-secondary btn-sm" onclick="showLlmManager()">⚙️ 管理配置</button>
             </div>
         </div>
         <div class="btn-row">
@@ -332,6 +325,45 @@
         <div class="btn-row" style="margin-top:0;">
             <button class="btn btn-secondary" onclick="closePwdModal()">取消</button>
             <button class="btn" onclick="submitChangePassword()">确认修改</button>
+        </div>
+    </div>
+</div>
+<!-- LLM Config Manager Modal -->
+<div class="modal-overlay" id="llmModal">
+    <div class="modal" style="width:560px; max-height:85vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3>🤖 LLM 模型配置</h3>
+            <button class="btn btn-secondary btn-sm" onclick="closeLlmManager()">关闭</button>
+        </div>
+        <div id="llmConfigList" style="margin-bottom:16px;"></div>
+        <div style="border-top:1px solid var(--border); padding-top:16px;">
+            <div style="font-size:14px; font-weight:600; margin-bottom:12px;">添加新配置</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>备注名称</label>
+                    <input type="text" id="newLlmName" placeholder="如：GPT-4o / DeepSeek / 本地Ollama">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>API Base URL</label>
+                    <input type="text" id="newLlmBaseUrl" placeholder="https://api.openai.com" value="https://api.openai.com">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="newLlmApiKey" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <input type="text" id="newLlmModel" placeholder="gpt-4o-mini" value="gpt-4o-mini">
+                </div>
+            </div>
+            <div class="btn-row" style="margin-top:0;">
+                <button class="btn btn-secondary btn-sm" onclick="testNewLlm()">🔌 测试连接</button>
+                <button class="btn btn-sm" onclick="addLlmConfig()">➕ 添加配置</button>
+            </div>
         </div>
     </div>
 </div>
@@ -512,9 +544,9 @@
         formData.append('target', document.getElementById('target').value);
         formData.append('api_key', document.getElementById('apiKey').value);
         formData.append('base_url', document.getElementById('baseUrl').value);
-        formData.append('model', document.getElementById('llmModel').value);
-        formData.append('llm_base_url', document.getElementById('llmBaseUrl').value);
-        formData.append('llm_api_key', document.getElementById('llmApiKey').value);
+        if (document.getElementById('llmConfigSelect')) {
+            formData.append('llm_config_id', document.getElementById('llmConfigSelect').value);
+        }
 
         fetch('/api/translate', { method: 'POST', body: formData })
             .then(function(r) { return r.json(); })
@@ -675,7 +707,7 @@
                 target: document.getElementById('target').value,
                 api_key: document.getElementById('apiKey').value,
                 base_url: document.getElementById('baseUrl').value,
-                model: document.getElementById('llmModel').value
+                llm_config_id: document.getElementById('llmConfigSelect') ? document.getElementById('llmConfigSelect').value : ''
             })
         })
             .then(function(r) { return r.json(); })
@@ -730,6 +762,143 @@
     document.getElementById('subtitleMode').addEventListener('change', function() {
         var orderSel = document.getElementById('subtitleOrder');
         orderSel.style.display = (this.value === 'bilingual') ? 'block' : 'none';
+    });
+
+    // ===== LLM Config Management =====
+    window.showLlmManager = function() {
+        document.getElementById('llmModal').classList.add('show');
+        loadLlmConfigs();
+    };
+    window.closeLlmManager = function() {
+        document.getElementById('llmModal').classList.remove('show');
+    };
+
+    function loadLlmConfigs() {
+        fetch('/api/llm-configs').then(function(r){return r.json();}).then(function(configs){
+            // Update dropdown
+            var sel = document.getElementById('llmConfigSelect');
+            sel.innerHTML = '';
+            if (configs.length === 0) {
+                sel.innerHTML = '<option value="">请先添加配置</option>';
+            } else {
+                configs.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name + ' (' + c.model + ')';
+                    sel.appendChild(opt);
+                });
+            }
+            // Update list in manager
+            var list = document.getElementById('llmConfigList');
+            list.innerHTML = '';
+            if (configs.length === 0) {
+                list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:12px;">暂无配置，请在下方添加</p>';
+            } else {
+                configs.forEach(function(c) {
+                    var div = document.createElement('div');
+                    div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px;';
+                    div.innerHTML = '<div style="flex:1;">' +
+                        '<div style="font-weight:600;">' + esc(c.name) + '</div>' +
+                        '<div style="font-size:12px; color:var(--muted);">' + esc(c.base_url) + ' · ' + esc(c.model) + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex; gap:4px;">' +
+                        '<button class="btn-edit" onclick="testLlmConfig(\''+c.id+'\',\''+esc(c.base_url)+'\',\''+esc(c.model)+'\')" style="white-space:nowrap;">测试</button>' +
+                        '<button class="btn-edit" onclick="editLlmConfig(\''+c.id+'\')" style="white-space:nowrap;">编辑</button>' +
+                        '<button class="btn-edit" onclick="deleteLlmConfig(\''+c.id+'\')" style="white-space:nowrap; color:var(--error);">删除</button>' +
+                        '</div>';
+                    list.appendChild(div);
+                });
+            }
+        });
+    }
+    window.loadLlmConfigs = loadLlmConfigs;
+
+    window.onLlmConfigChange = function() {};
+
+    window.addLlmConfig = function() {
+        var name = document.getElementById('newLlmName').value.trim();
+        var baseUrl = document.getElementById('newLlmBaseUrl').value.trim();
+        var apiKey = document.getElementById('newLlmApiKey').value.trim();
+        var model = document.getElementById('newLlmModel').value.trim();
+        if (!name || !baseUrl || !model) { showToast('名称、API地址、模型不能为空', 'error'); return; }
+        fetch('/api/llm-configs', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name, base_url: baseUrl, api_key: apiKey, model: model })
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) {
+                showToast('配置已添加', 'success');
+                document.getElementById('newLlmName').value = '';
+                document.getElementById('newLlmApiKey').value = '';
+                loadLlmConfigs();
+            } else { showToast(data.error || '添加失败', 'error'); }
+        });
+    };
+
+    window.deleteLlmConfig = function(id) {
+        if (!confirm('确认删除此配置？')) return;
+        fetch('/api/llm-configs/' + id, { method: 'DELETE' })
+            .then(function(r){return r.json();})
+            .then(function(data){
+                if (data.ok) { showToast('已删除', 'success'); loadLlmConfigs(); }
+                else { showToast(data.error || '删除失败', 'error'); }
+            });
+    };
+
+    window.editLlmConfig = function(id) {
+        var name = prompt('备注名称:');
+        if (name === null) return;
+        var baseUrl = prompt('API Base URL:');
+        if (baseUrl === null) return;
+        var model = prompt('模型名称:');
+        if (model === null) return;
+        var apiKey = prompt('API Key (留空则不修改):');
+        var body = { name: name, base_url: baseUrl, model: model };
+        if (apiKey) body.api_key = apiKey;
+        fetch('/api/llm-configs/' + id, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast('已更新', 'success'); loadLlmConfigs(); }
+            else { showToast(data.error || '更新失败', 'error'); }
+        });
+    };
+
+    window.testLlmConfig = function(id, baseUrl, model) {
+        showToast('测试中...', '');
+        // Need api_key - fetch all configs (with key) isn't available via API
+        // Use the test endpoint with stored config
+        // We need a server-side test by config id
+        fetch('/api/llm-configs/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ config_id: id })
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast(data.message, 'success'); }
+            else { showToast(data.message || '测试失败', 'error'); }
+        });
+    };
+
+    window.testNewLlm = function() {
+        var baseUrl = document.getElementById('newLlmBaseUrl').value.trim();
+        var apiKey = document.getElementById('newLlmApiKey').value.trim();
+        var model = document.getElementById('newLlmModel').value.trim();
+        if (!baseUrl || !model) { showToast('API地址和模型不能为空', 'error'); return; }
+        showToast('测试中...', '');
+        fetch('/api/llm-configs/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ base_url: baseUrl, api_key: apiKey, model: model })
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast(data.message, 'success'); }
+            else { showToast(data.message || '测试失败', 'error'); }
+        });
+    };
+
+    // Close LLM modal on overlay click
+    document.getElementById('llmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeLlmManager();
     });
 
     // ===== User menu =====

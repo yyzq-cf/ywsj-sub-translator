@@ -125,6 +125,40 @@ def translate_llm(text, source='auto', target='zh-CN', api_key='', base_url='', 
     return data['choices'][0]['message']['content'].strip()
 
 
+def test_llm_connection(base_url, api_key, model):
+    """Test LLM connection, return (ok, message)."""
+    try:
+        url = base_url.rstrip('/') + '/v1/chat/completions'
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+        }
+        payload = {
+            'model': model,
+            'messages': [{'role': 'user', 'content': 'Hi, reply with "OK" only.'}],
+            'max_tokens': 10,
+            'temperature': 0,
+        }
+        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        reply = data['choices'][0]['message']['content'].strip()
+        return True, f'连接成功，模型回复: {reply}'
+    except requests.exceptions.ConnectionError:
+        return False, '无法连接到API地址'
+    except requests.exceptions.Timeout:
+        return False, '请求超时'
+    except requests.exceptions.HTTPError as e:
+        code = e.response.status_code
+        try:
+            err_msg = e.response.json().get('error', {}).get('message', str(e))
+        except:
+            err_msg = str(e)
+        return False, f'HTTP {code}: {err_msg}'
+    except Exception as e:
+        return False, str(e)
+
+
 ENGINES = {
     'google': {'func': translate_google, 'label': 'Google翻译', 'needs_key': False, 'default_target': 'zh-CN'},
     'deepl': {'func': translate_deepl, 'label': 'DeepL', 'needs_key': True, 'default_target': 'ZH'},
