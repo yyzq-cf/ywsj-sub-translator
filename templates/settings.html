@@ -92,15 +92,7 @@
                 <button class="btn btn-secondary btn-sm" onclick="cleanupCache()">🧹 清理缓存</button>
             </div>
         </div>
-        <div class="config-item">
-            <div class="config-info">
-                <div class="config-name">Docker 旧镜像</div>
-                <div class="config-meta">清理未使用的 Docker 镜像和构建缓存</div>
-            </div>
-            <div class="config-actions">
-                <button class="btn btn-secondary btn-sm" onclick="cleanupDocker()">🗑️ 清理镜像</button>
-            </div>
-        </div>
+
     </div>
 
     <!-- Config List -->
@@ -566,17 +558,6 @@ function testTapiConfigById(id) {
 function cleanupCache() {
     if (!confirm('确认清理翻译任务缓存？')) return;
     fetch('/api/cleanup', { method: 'POST' })
-        .then(function(r){return r.json();})
-        .then(function(data){
-            if (data.ok) { showToast(data.message, 'success'); }
-            else { showToast(data.message || '清理失败', 'error'); }
-        });
-}
-
-function cleanupDocker() {
-    if (!confirm('确认清理未使用的Docker镜像？这不会影响正在运行的容器。')) return;
-    showToast('清理中...', '');
-    fetch('/api/cleanup-docker', { method: 'POST' })
         .then(function(r){return r.json();})
         .then(function(data){
             if (data.ok) { showToast(data.message, 'success'); }
