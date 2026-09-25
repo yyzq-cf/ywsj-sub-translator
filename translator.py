@@ -120,6 +120,13 @@ def translate_llm(text, source='auto', target='zh-CN', api_key='', base_url='', 
     resp = requests.post(url, json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     data = resp.json()
+    if 'choices' not in data:
+        if 'msg' in data:
+            raise Exception(data['msg'])
+        if 'error' in data:
+            err = data['error']
+            raise Exception(err.get('message', str(err)) if isinstance(err, dict) else str(err))
+        raise Exception(f'未知响应: {str(data)[:200]}')
     return data['choices'][0]['message']['content'].strip()
 
 
@@ -137,9 +144,19 @@ def test_llm_connection(base_url, api_key, model):
             'max_tokens': 10,
             'temperature': 0,
         }
-        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        resp = requests.post(url, json=payload, headers=headers, timeout=20)
         resp.raise_for_status()
         data = resp.json()
+        # Check for non-standard error responses (e.g. 智谱 returns HTTP 200 with code:401)
+        if 'choices' not in data:
+            if 'msg' in data:
+                return False, data['msg']
+            if 'error' in data:
+                err = data['error']
+                if isinstance(err, dict):
+                    return False, err.get('message', str(err))
+                return False, str(err)
+            return False, f'未知响应格式: {str(data)[:200]}'
         reply = data['choices'][0]['message']['content'].strip()
         return True, f'连接成功，模型回复: {reply}'
     except requests.exceptions.ConnectionError:
@@ -149,10 +166,19 @@ def test_llm_connection(base_url, api_key, model):
     except requests.exceptions.HTTPError as e:
         code = e.response.status_code
         try:
-            err_msg = e.response.json().get('error', {}).get('message', str(e))
+            err_body = e.response.json()
+            if 'msg' in err_body:
+                return False, f'HTTP {code}: {err_body["msg"]}'
+            if 'error' in err_body:
+                err = err_body['error']
+                if isinstance(err, dict):
+                    return False, f'HTTP {code}: {err.get("message", str(err))}'
+                return False, f'HTTP {code}: {err}'
+            return False, f'HTTP {code}: {str(err_body)[:200]}'
         except:
-            err_msg = str(e)
-        return False, f'HTTP {code}: {err_msg}'
+            return False, f'HTTP {code}'
+    except KeyError as e:
+        return False, f'响应格式异常，缺少字段: {e}'
     except Exception as e:
         return False, str(e)
 
