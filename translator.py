@@ -77,9 +77,7 @@ def translate_libre(text, source='auto', target='zh', api_key='', base_url='http
     return resp.json()['translatedText']
 
 
-def translate_mymemory(text, source='en', target='zh-CN', api_key=''):
     """Use MyMemory free translation API."""
-    url = 'https://api.mymemory.translated.net/get'
     params = {
         'q': text,
         'langpair': f'{source}|{target}',
@@ -191,7 +189,6 @@ ENGINES = {
     'google': {'func': translate_google, 'label': 'Google翻译', 'needs_key': False, 'default_target': 'zh-CN'},
     'deepl': {'func': translate_deepl, 'label': 'DeepL', 'needs_key': True, 'default_target': 'ZH'},
     'libre': {'func': translate_libre, 'label': 'LibreTranslate', 'needs_key': False, 'default_target': 'zh'},
-    'mymemory': {'func': translate_mymemory, 'label': 'MyMemory', 'needs_key': False, 'default_target': 'zh-CN'},
 }
 
 
@@ -215,7 +212,6 @@ def batch_translate(texts, engine='google', source='auto', target='zh-CN', api_k
                 translated = func(combined, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
             elif engine == 'deepl':
                 translated = func(combined, source=source, target=target, api_key=api_key)
-            elif engine == 'mymemory':
                 translated = func(combined, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
             else:
                 translated = func(combined, source=source, target=target, api_key=api_key)
@@ -231,7 +227,6 @@ def batch_translate(texts, engine='google', source='auto', target='zh-CN', api_k
                             r = func(text, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
                         elif engine == 'deepl':
                             r = func(text, source=source, target=target, api_key=api_key)
-                        elif engine == 'mymemory':
                             r = func(text, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
                         else:
                             r = func(text, source=source, target=target, api_key=api_key)
