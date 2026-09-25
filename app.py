@@ -480,6 +480,129 @@ def engines():
     return jsonify({k: {'label': v['label'], 'needs_key': v['needs_key']} for k, v in ENGINES.items()})
 
 
+@app.route('/api/llm-configs')
+@login_required
+def get_llm_configs():
+    configs = load_llm_configs()
+    safe = []
+    for c in configs:
+        sc = dict(c)
+        if sc.get('api_key'):
+            sc['api_key_masked'] = sc['api_key'][:8] + '...' if len(sc['api_key']) > 8 else '***'
+            sc['has_key'] = True
+        else:
+            sc['has_key'] = False
+        sc.pop('api_key', None)
+        safe.append(sc)
+    return jsonify(safe)
+
+
+@app.route('/api/llm-configs/<config_id>/full')
+@login_required
+def get_llm_config_full(config_id):
+    for cfg in load_llm_configs():
+        if cfg['id'] == config_id:
+            return jsonify(cfg)
+    return jsonify({'error': '配置不存在'}), 404
+
+
+@app.route('/api/llm-configs', methods=['POST'])
+@login_required
+def add_llm_config():
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    base_url = data.get('base_url', '').strip()
+    api_key = data.get('api_key', '').strip()
+    model = data.get('model', '').strip()
+    if not name or not base_url or not model:
+        return jsonify({'error': '名称、API地址、模型不能为空'}), 400
+    configs = load_llm_configs()
+    new_config = {
+        'id': str(uuid.uuid4())[:8],
+        'name': name, 'base_url': base_url,
+        'api_key': api_key, 'model': model,
+    }
+    configs.append(new_config)
+    save_llm_configs(configs)
+    return jsonify({'ok': True, 'id': new_config['id']})
+
+
+@app.route('/api/llm-configs/<config_id>', methods=['PUT'])
+@login_required
+def update_llm_config(config_id):
+    data = request.get_json()
+    configs = load_llm_configs()
+    for c in configs:
+        if c['id'] == config_id:
+            if 'name' in data: c['name'] = data['name'].strip()
+            if 'base_url' in data: c['base_url'] = data['base_url'].strip()
+            if 'model' in data: c['model'] = data['model'].strip()
+            if 'api_key' in data and data['api_key']: c['api_key'] = data['api_key'].strip()
+            save_llm_configs(configs)
+            return jsonify({'ok': True})
+    return jsonify({'error': '配置不存在'}), 404
+
+
+@app.route('/api/llm-configs/<config_id>', methods=['DELETE'])
+@login_required
+def delete_llm_config(config_id):
+    configs = load_llm_configs()
+    new_configs = [c for c in configs if c['id'] != config_id]
+    if len(new_configs) == len(configs):
+        return jsonify({'error': '配置不存在'}), 404
+    save_llm_configs(new_configs)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/llm-configs/test', methods=['POST'])
+@login_required
+def test_llm():
+    data = request.get_json()
+    config_id = data.get('config_id', '')
+    if config_id:
+        for cfg in load_llm_configs():
+            if cfg['id'] == config_id:
+                ok, msg = test_llm_connection(cfg['base_url'], cfg.get('api_key', ''), cfg['model'])
+                return jsonify({'ok': ok, 'message': msg})
+        return jsonify({'ok': False, 'message': '配置不存在'}), 404
+    base_url = data.get('base_url', '').strip()
+    api_key = data.get('api_key', '').strip()
+    model = data.get('model', '').strip()
+    if not base_url or not model:
+        return jsonify({'ok': False, 'message': 'API地址和模型不能为空'}), 400
+    ok, msg = test_llm_connection(base_url, api_key, model)
+    return jsonify({'ok': ok, 'message': msg})
+
+
+@app.route('/api/llm-models', methods=['POST'])
+@login_required
+def get_llm_models():
+    data = request.get_json()
+    base_url = data.get('base_url', '').strip()
+    api_key = data.get('api_key', '').strip()
+    config_id = data.get('config_id', '')
+    if config_id:
+        for cfg in load_llm_configs():
+            if cfg['id'] == config_id:
+                base_url = cfg.get('base_url', '')
+                api_key = cfg.get('api_key', '')
+                break
+    if not base_url or not api_key:
+        return jsonify({'error': '请先填写API地址和Key'}), 400
+    try:
+        from translator import fetch_llm_models
+        models = fetch_llm_models(base_url, api_key)
+        return jsonify({'ok': True, 'models': models})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 200
+
+
+@app.route('/api/llm-presets')
+@login_required
+def llm_presets():
+    return jsonify(LLM_PRESETS)
+
+
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok'})
