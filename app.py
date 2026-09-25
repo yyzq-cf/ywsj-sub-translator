@@ -176,7 +176,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     func = engine_info['func']
     results = []
     errors = []
-    batch_size = 20
+    batch_size = 10
 
     for i in range(0, total, batch_size):
         batch = texts[i:i + batch_size]
@@ -214,6 +214,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         except Exception as e:
             results.extend(batch)
             errors.append(f'Batch {i // batch_size + 1}: {str(e)}')
+            logger.error(f'Batch {i//batch_size+1} failed: {e}')
 
         task['done'] = min(len(results), total)
         task['status'] = 'translating'

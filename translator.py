@@ -99,7 +99,7 @@ ENGINES = {
 }
 
 
-def batch_translate(texts, engine='google', source='auto', target='zh-CN', api_key='', base_url='', batch_size=20):
+def batch_translate(texts, engine='google', source='auto', target='zh-CN', api_key='', base_url='', batch_size=10):
     """
     Translate a list of texts in batches.
     Returns (translated_texts, errors).
