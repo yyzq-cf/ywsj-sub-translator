@@ -314,8 +314,8 @@ def translate_baidu(text, source='auto', target='zh', api_key='', secret_key='')
 
 
 def translate_youdao(text, source='auto', target='zh-CHS', api_key='', secret_key=''):
-    """Use Youdao Translate API."""
-    import hashlib, base64
+    """Use Youdao Translate API (v3 signing)."""
+    import hashlib, time as _time, uuid
     app_key = api_key
     app_secret = secret_key
 
@@ -328,10 +328,20 @@ def translate_youdao(text, source='auto', target='zh-CHS', api_key='', secret_ke
     if target == 'ja': youdao_target = 'ja'
     if target == 'ko': youdao_target = 'ko'
     if target == 'fr': youdao_target = 'fr'
+    if target == 'de': youdao_target = 'de'
+    if target == 'es': youdao_target = 'es'
+    if target == 'ru': youdao_target = 'ru'
+    if target == 'pt': youdao_target = 'pt'
+    if target == 'vi': youdao_target = 'vi'
+    if target == 'th': youdao_target = 'th'
+    if target == 'ar': youdao_target = 'ara'
 
-    import time as _time
-    salt = str(_time.time())
-    sign_str = app_key + text + salt + app_secret
+    # Build input (first 10 chars of text if > 10, else full text)
+    input_str = text[:10] if len(text) > 10 else text
+    salt = str(uuid.uuid4())
+    curtime = str(int(_time.time()))
+    # sign = sha256(appKey + input + salt + curtime + key)
+    sign_str = app_key + input_str + salt + curtime + app_secret
     sign = hashlib.sha256(sign_str.encode('utf-8')).hexdigest()
 
     data = {
@@ -342,13 +352,14 @@ def translate_youdao(text, source='auto', target='zh-CHS', api_key='', secret_ke
         'salt': salt,
         'sign': sign,
         'signType': 'v3',
+        'curtime': curtime,
     }
 
     resp = requests.post('https://openapi.youdao.com/api', data=data, timeout=15)
     resp.raise_for_status()
     result = resp.json()
     if result.get('errorCode') != '0':
-        raise Exception(f"Youdao error: {result.get('errorCode')}")
+        raise Exception(f"Youdao error {result.get('errorCode')}: {result.get('errorCode', '')}")
     return chr(10).join(item['tgt'] for item in result.get('translation', []))
 
 
