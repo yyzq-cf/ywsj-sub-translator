@@ -212,7 +212,8 @@ def download(task_id):
 
     from urllib.parse import quote
     encoded = quote(out_filename)
-    cd = "attachment; filename="" + encoded + ""; filename*=UTF-8''" + encoded
+    ascii_name = encoded.replace('%', 'X')[:50]
+    cd = 'attachment; filename="' + ascii_name + '"; filename*=UTF-8' + chr(39) + chr(39) + encoded
     return Response(
         result,
         mimetype='application/octet-stream',
