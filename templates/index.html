@@ -603,6 +603,7 @@
 
                     if (data.status === 'done') {
                         clearInterval(pollTimer);
+                        stopTimer();
                         fill.style.width = '100%';
                         text.textContent = '翻译完成！可在下方编辑后下载';
                         btn.disabled = false; btn.textContent = '🚀 重新翻译';
