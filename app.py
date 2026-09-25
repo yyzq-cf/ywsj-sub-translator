@@ -56,6 +56,25 @@ def save_auth(username, password):
         json.dump({'username': username, 'password': password}, f)
     os.chmod(AUTH_FILE, 0o600)
 
+LLM_CONFIG_FILE = os.path.join(DATA_DIR, "llm_configs.json")
+
+
+def load_llm_configs():
+    """Load LLM configurations."""
+    try:
+        with open(LLM_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except (OSError, IOError):
+        return []
+
+
+def save_llm_configs(configs):
+    """Save LLM configurations."""
+    with open(LLM_CONFIG_FILE, 'w') as f:
+        json.dump(configs, f, ensure_ascii=False, indent=2)
+    os.chmod(LLM_CONFIG_FILE, 0o600)
+
+
 def is_auth_enabled():
     return load_auth() is not None
 
