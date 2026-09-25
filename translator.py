@@ -360,7 +360,14 @@ def translate_youdao(text, source='auto', target='zh-CHS', api_key='', secret_ke
     result = resp.json()
     if result.get('errorCode') != '0':
         raise Exception(f"Youdao error {result.get('errorCode')}: {result.get('errorCode', '')}")
-    return chr(10).join(item['tgt'] for item in result.get('translation', []))
+    translations = result.get('translation', [])
+    results = []
+    for item in translations:
+        if isinstance(item, dict):
+            results.append(item.get('tgt', ''))
+        elif isinstance(item, str):
+            results.append(item)
+    return chr(10).join(results)
 
 
 import random
