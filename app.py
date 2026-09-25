@@ -197,8 +197,12 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     task['content'] = content
     task['detected_fmt'] = detected_fmt
 
-    engine_info = ENGINES.get(engine, ENGINES['google'])
-    func = engine_info['func']
+    if engine == 'llm':
+        from translator import translate_llm
+        func = translate_llm
+    else:
+        engine_info = ENGINES.get(engine, ENGINES['google'])
+        func = engine_info['func']
     results = []
     errors = []
     batch_size = 10
@@ -420,8 +424,12 @@ def retranslate_entry(task_id):
         return jsonify({'error': '索引超出范围'}), 400
     original_entries = task.get('original_entries', [])
     original_text = original_entries[index]['text'] if index < len(original_entries) else entries[index]['text']
-    engine_info = ENGINES.get(engine, ENGINES['google'])
-    func = engine_info['func']
+    if engine == 'llm':
+        from translator import translate_llm
+        func = translate_llm
+    else:
+        engine_info = ENGINES.get(engine, ENGINES['google'])
+        func = engine_info['func']
     try:
         if engine == 'libre':
             translated = func(original_text, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
