@@ -192,7 +192,6 @@ ENGINES = {
     'deepl': {'func': translate_deepl, 'label': 'DeepL', 'needs_key': True, 'default_target': 'ZH'},
     'libre': {'func': translate_libre, 'label': 'LibreTranslate', 'needs_key': False, 'default_target': 'zh'},
     'mymemory': {'func': translate_mymemory, 'label': 'MyMemory', 'needs_key': False, 'default_target': 'zh-CN'},
-    'llm': {'func': translate_llm, 'label': 'LLM大模型', 'needs_key': True, 'default_target': 'zh-CN'},
 }
 
 

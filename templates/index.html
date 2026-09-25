@@ -448,6 +448,7 @@
     window.onEngineChange = function() {
         var engine = document.getElementById('engine').value;
         var langs = ENGINE_LANGS[engine] || GOOGLE_LANGS;
+        if (engine.startsWith('llm:')) langs = GOOGLE_LANGS;
         var curSource = document.getElementById('source').value || 'auto';
         var curTarget = document.getElementById('target').value || 'zh-CN';
         var defaultTarget = (engine === 'deepl') ? 'zh' : 'zh-CN';
@@ -464,9 +465,7 @@
         if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
         if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
         if (engine === 'mymemory') document.getElementById('apiKeyRow').style.display = 'flex';
-        if (engine.startsWith('llm:')) {
-            // LLM config selected - no extra fields needed
-        }
+        // LLM configs need no extra fields - everything is in the saved config
         var count = langs.length - 1;
         document.getElementById('langCount').textContent = '支持 ' + count + ' 种语言';
     };
