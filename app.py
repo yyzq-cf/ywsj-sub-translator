@@ -103,6 +103,27 @@ def auth_status():
     })
 
 
+@app.route('/api/auth/change-password', methods=['POST'])
+@login_required
+def change_password():
+    data = request.get_json()
+    old_password = data.get('old_password', '')
+    new_password = data.get('new_password', '')
+
+    if not new_password or len(new_password) < 4:
+        return jsonify({'error': '新密码至少4位'}), 400
+
+    auth = load_auth()
+    if not auth:
+        return jsonify({'error': '认证未启用'}), 400
+
+    if old_password != auth['password']:
+        return jsonify({'error': '旧密码错误'}), 403
+
+    save_auth(auth['username'], new_password)
+    return jsonify({'ok': True})
+
+
 # ===== In-memory task store =====
 tasks = {}
 

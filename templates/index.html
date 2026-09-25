@@ -133,6 +133,34 @@
         .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
         .btn-retranslate { background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 4px; }
         .btn-retranslate:hover { border-color: var(--accent); color: var(--accent); }
+        .user-menu { position: relative; }
+        .user-btn {
+            background: var(--card); border: 1px solid var(--border); color: var(--text);
+            padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 14px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .user-btn:hover { border-color: var(--accent); }
+        .user-dropdown {
+            display: none; position: absolute; right: 0; top: 100%; margin-top: 4px;
+            background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+            padding: 8px; min-width: 160px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .user-dropdown.show { display: block; }
+        .user-dropdown button {
+            background: none; border: none; color: var(--text); cursor: pointer;
+            padding: 8px 12px; width: 100%; text-align: left; border-radius: 6px; font-size: 14px;
+        }
+        .user-dropdown button:hover { background: var(--bg); }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; width: 360px; max-width: 90vw;
+        }
+        .modal h3 { margin-bottom: 16px; }
         .badge-edited { background: var(--edited); color: #000; padding: 1px 5px; border-radius: 3px; font-size: 10px; margin-left: 4px; }
     </style>
 </head>
@@ -143,6 +171,13 @@
         <div class="header-right">
             <span class="version-badge" id="version">{{ version }}</span>
             <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+            <div class="user-menu" id="userMenu" style="display:none;">
+                <button class="user-btn" onclick="toggleUserMenu()">👤 账户 ▾</button>
+                <div class="user-dropdown" id="userDropdown">
+                    <button onclick="showChangePassword()">🔑 修改密码</button>
+                    <button onclick="doLogout()">🚪 退出登录</button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -237,6 +272,28 @@
 
     <div class="footer">
         <p>ywsj-sub-translator · <a href="https://github.com/yyzq-cf/ywsj-sub-translator" target="_blank">GitHub</a></p>
+    </div>
+</div>
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="pwdModal">
+    <div class="modal">
+        <h3>🔑 修改密码</h3>
+        <div class="form-group" style="margin-bottom:12px;">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px;">旧密码</label>
+            <input type="password" id="oldPassword" placeholder="输入当前密码">
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px;">新密码</label>
+            <input type="password" id="newPassword" placeholder="输入新密码（至少4位）">
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px;">确认新密码</label>
+            <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+            <button class="btn btn-secondary" onclick="closePwdModal()">取消</button>
+            <button class="btn" onclick="submitChangePassword()">确认修改</button>
+        </div>
     </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -608,6 +665,70 @@
     };
 
     window.scrollToTop = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+    // ===== User menu =====
+    function checkAuthAndShowMenu() {
+        fetch('/api/auth/status').then(function(r){return r.json();}).then(function(data){
+            if (data.auth_enabled && data.logged_in) {
+                document.getElementById('userMenu').style.display = 'block';
+            }
+        });
+    }
+    checkAuthAndShowMenu();
+
+    window.toggleUserMenu = function() {
+        document.getElementById('userDropdown').classList.toggle('show');
+    };
+
+    document.addEventListener('click', function(e) {
+        var menu = document.getElementById('userMenu');
+        if (menu && !menu.contains(e.target)) {
+            document.getElementById('userDropdown').classList.remove('show');
+        }
+    });
+
+    window.doLogout = function() {
+        fetch('/logout', { method: 'GET' }).then(function() { window.location.href = '/login'; });
+    };
+
+    window.showChangePassword = function() {
+        document.getElementById('userDropdown').classList.remove('show');
+        document.getElementById('pwdModal').classList.add('show');
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        document.getElementById('oldPassword').focus();
+    };
+
+    window.closePwdModal = function() {
+        document.getElementById('pwdModal').classList.remove('show');
+    };
+
+    window.submitChangePassword = function() {
+        var oldPwd = document.getElementById('oldPassword').value;
+        var newPwd = document.getElementById('newPassword').value;
+        var confirmPwd = document.getElementById('confirmPassword').value;
+        if (!oldPwd || !newPwd) { showToast('请填写完整', 'error'); return; }
+        if (newPwd.length < 4) { showToast('新密码至少4位', 'error'); return; }
+        if (newPwd !== confirmPwd) { showToast('两次新密码不一致', 'error'); return; }
+        fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) {
+                showToast('密码修改成功', 'success');
+                closePwdModal();
+            } else {
+                showToast(data.error || '修改失败', 'error');
+            }
+        }).catch(function(err){ showToast(err.message, 'error'); });
+    };
+
+    // Close modal on overlay click
+    document.getElementById('pwdModal').addEventListener('click', function(e) {
+        if (e.target === this) closePwdModal();
+    });
 
     // ===== Theme =====
     window.toggleTheme = function() {
