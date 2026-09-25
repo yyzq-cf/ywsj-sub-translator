@@ -336,8 +336,8 @@ def translate_youdao(text, source='auto', target='zh-CHS', api_key='', secret_ke
     if target == 'th': youdao_target = 'th'
     if target == 'ar': youdao_target = 'ara'
 
-    # Build input (first 10 chars of text if > 10, else full text)
-    input_str = text[:10] if len(text) > 10 else text
+    # Build input (use full text for signing)
+    input_str = text
     salt = str(uuid.uuid4())
     curtime = str(int(_time.time()))
     # sign = sha256(appKey + input + salt + curtime + key)
