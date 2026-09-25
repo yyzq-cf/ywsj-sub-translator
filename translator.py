@@ -287,12 +287,15 @@ def translate_baidu(text, source='auto', target='zh', api_key='', secret_key='')
     sign = hashlib.md5(sign_str.encode('utf-8')).hexdigest()
 
     # Map language codes
-    baidu_source = source
-    baidu_target = target
-    if source == 'zh-CN': baidu_source = 'zh'
-    if target == 'zh-CN': baidu_target = 'zh'
-    if source == 'zh-TW': baidu_source = 'cht'
-    if target == 'zh-TW': baidu_target = 'cht'
+    # Baidu language code mapping
+    baidu_lang_map = {
+        'zh-CN': 'zh', 'zh-TW': 'cht', 'en': 'en', 'ja': 'jp',
+        'ko': 'kor', 'fr': 'fra', 'de': 'de', 'es': 'spa',
+        'ru': 'ru', 'it': 'it', 'pt': 'pt', 'vi': 'vie',
+        'th': 'th', 'ar': 'ara', 'auto': 'auto',
+    }
+    baidu_source = baidu_lang_map.get(source, source)
+    baidu_target = baidu_lang_map.get(target, target)
 
     params = {
         'q': text,
