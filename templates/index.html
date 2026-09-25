@@ -186,6 +186,7 @@
         <div class="header-right">
             <span class="version-badge" id="version">{{ version }}</span>
             <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+            <button class="theme-btn" onclick="cleanupCache()" title="清理缓存" style="width:auto; padding:6px 10px; font-size:13px;">🧹</button>
             <div class="user-menu" id="userMenu" style="display:none;">
                 <button class="user-btn" onclick="toggleUserMenu()">👤 账户 ▾</button>
                 <div class="user-dropdown" id="userDropdown">
@@ -1053,6 +1054,21 @@
     document.getElementById('pwdModal').addEventListener('click', function(e) {
         if (e.target === this) closePwdModal();
     });
+
+    // ===== Cache cleanup =====
+    window.cleanupCache = function() {
+        if (!confirm('确认清理翻译任务缓存？')) return;
+        fetch('/api/cleanup', { method: 'POST' })
+            .then(function(r){return r.json();})
+            .then(function(data){
+                if (data.ok) {
+                    showToast(data.message, 'success');
+                    document.getElementById('editorSection').classList.remove('show');
+                    document.getElementById('previewSection').classList.remove('show');
+                    hideProgress();
+                } else { showToast(data.message || '清理失败', 'error'); }
+            });
+    };
 
     // ===== Theme =====
     window.toggleTheme = function() {

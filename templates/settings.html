@@ -555,16 +555,6 @@ function testTapiConfigById(id) {
     });
 }
 
-function cleanupCache() {
-    if (!confirm('确认清理翻译任务缓存？')) return;
-    fetch('/api/cleanup', { method: 'POST' })
-        .then(function(r){return r.json();})
-        .then(function(data){
-            if (data.ok) { showToast(data.message, 'success'); }
-            else { showToast(data.message || '清理失败', 'error'); }
-        });
-}
-
 loadPresets();
 loadConfigs();
 loadTapiPresets();
