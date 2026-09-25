@@ -378,6 +378,7 @@ def start_translate():
 
     # Parse translate API config: engine can be 'tapi:<config_id>'
     tapi_config = None
+    secret_key = ''
     if engine.startswith('tapi:'):
         tapi_id = engine[4:]
         for cfg in load_translate_api_configs():
