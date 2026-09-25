@@ -813,6 +813,34 @@ def test_translate_api():
         return jsonify({'ok': False, 'message': str(e)[:200]})
 
 
+@app.route('/api/cleanup', methods=['POST'])
+@login_required
+def cleanup():
+    """Clear in-memory tasks."""
+    cleared = len(tasks)
+    tasks.clear()
+    return jsonify({'ok': True, 'message': f'已清理 {cleared} 个翻译任务缓存'})
+
+
+@app.route('/api/cleanup-docker', methods=['POST'])
+@login_required
+def cleanup_docker():
+    """Clean unused Docker images and build cache."""
+    import subprocess
+    try:
+        # Remove dangling images
+        r1 = subprocess.run(['docker', 'image', 'prune', '-f'], capture_output=True, text=True, timeout=30)
+        # Prune build cache
+        r2 = subprocess.run(['docker', 'builder', 'prune', '-f'], capture_output=True, text=True, timeout=30)
+        total_reclaimed = '0'
+        for line in (r1.stdout + r2.stdout).split('\n'):
+            if 'reclaimed' in line.lower() or 'Total' in line:
+                total_reclaimed = line.strip()
+        return jsonify({'ok': True, 'message': f'Docker清理完成. {total_reclaimed}'})
+    except Exception as e:
+        return jsonify({'ok': False, 'message': f'清理失败: {str(e)[:100]}'})
+
+
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok'})
