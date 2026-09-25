@@ -245,6 +245,26 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
 
         if not need_translate:
             results.extend(batch_results)
+        elif engine == 'llm':
+            # LLM: translate one by one for real-time progress
+            for idx in need_indices:
+                text = batch[idx]
+                try:
+                    batch_results[idx] = _do_translate(text)
+                except Exception as e:
+                    errors.append(f'Line {i+idx+1}: {str(e)}')
+                results_count = len(results) + idx + 1
+                task['done'] = min(results_count, total)
+                task['status'] = 'translating'
+                for j in range(i, min(i + len(batch), total)):
+                    if j < len(results) + len(batch_results) and batch_results[j - i if j >= i else 0]:
+                        pass
+                # Update entries in real-time
+                for j in range(len(batch_results)):
+                    global_j = i + j
+                    if global_j < len(entries) and batch_results[j]:
+                        entries[global_j]['text'] = batch_results[j]
+            results.extend(batch_results)
         else:
             separator = '\n---\n'
             combined = separator.join(need_translate)
@@ -259,6 +279,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
                         text = batch[idx]
                         try:
                             batch_results[idx] = _do_translate(text)
+                            task['done'] = min(len(results) + idx + 1, total)
                         except Exception as e:
                             errors.append(f'Line {i+idx+1}: {str(e)}')
                 import time
