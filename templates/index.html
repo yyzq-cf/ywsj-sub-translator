@@ -238,8 +238,8 @@
         </div>
         <div class="form-row" id="llmRow" style="display:none;">
             <div class="form-group">
-                <label>LLM 模型配置 <a href="/settings" style="font-size:12px;">前往配置页面 →</a></label>
-                <select id="llmConfigSelect"></select>
+                <label>LLM 模型配置 <a href="/settings" style="font-size:12px;">管理 →</a></label>
+                <select id="llmConfigSelect" onchange="onLlmConfigChange()"></select>
             </div>
         </div>
         <div class="btn-row">
@@ -469,7 +469,10 @@
         if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
         if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
         if (engine === 'mymemory') document.getElementById('apiKeyRow').style.display = 'flex';
-        if (engine === 'llm') { document.getElementById('llmRow').style.display = 'flex'; document.getElementById('llmModelRow').style.display = 'flex'; }
+        if (engine === 'llm') {
+            document.getElementById('llmRow').style.display = 'flex';
+            loadLlmConfigsToDropdown();
+        }
         var count = langs.length - 1;
         document.getElementById('langCount').textContent = '支持 ' + count + ' 种语言';
     };
@@ -814,7 +817,39 @@
     }
     window.loadLlmConfigs = loadLlmConfigs;
 
-    window.onLlmConfigChange = function() {};
+    function loadLlmConfigsToDropdown() {
+        fetch('/api/llm-configs').then(function(r){return r.json();}).then(function(configs){
+            var sel = document.getElementById('llmConfigSelect');
+            sel.innerHTML = '';
+            if (configs.length === 0) {
+                sel.innerHTML = '<option value="">请先在配置页面添加</option>';
+            } else {
+                configs.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name + ' · ' + c.model;
+                    sel.appendChild(opt);
+                });
+                onLlmConfigChange();
+            }
+        });
+    }
+    window.loadLlmConfigsToDropdown = loadLlmConfigsToDropdown;
+
+    window.onLlmConfigChange = function() {
+        var sel = document.getElementById('llmConfigSelect');
+        if (sel.selectedIndex >= 0) {
+            var name = sel.options[sel.selectedIndex].text;
+            // Update engine label to show selected model
+            var engineSel = document.getElementById('engine');
+            for (var i = 0; i < engineSel.options.length; i++) {
+                if (engineSel.options[i].value === 'llm') {
+                    engineSel.options[i].textContent = 'LLM: ' + name;
+                    break;
+                }
+            }
+        }
+    };
 
     window.addLlmConfig = function() {
         var name = document.getElementById('newLlmName').value.trim();
