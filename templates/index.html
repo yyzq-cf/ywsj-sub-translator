@@ -88,6 +88,7 @@
         .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
         .progress-text { color: var(--muted); font-size: 13px; margin-top: 8px; text-align: center; }
+        .timer-text { color: var(--accent); font-size: 13px; margin-top: 4px; text-align: center; font-weight: 600; }
         .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 0; }
         .toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -247,6 +248,7 @@
     <div class="progress" id="progress">
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div class="progress-text" id="progressText">翻译中...</div>
+        <div class="timer-text" id="timerText"></div>
     </div>
 
     <!-- Preview Card -->
@@ -515,6 +517,7 @@
         document.getElementById('editorSection').classList.remove('show');
         document.getElementById('previewSection').classList.remove('show');
         showProgress('提交翻译任务...');
+        startTimer();
 
         var formData = new FormData();
         formData.append('file', selectedFile);
@@ -536,10 +539,36 @@
                 startPolling(data.task_id, data.total);
             })
             .catch(function(err) {
-                hideProgress(); btn.disabled = false; btn.textContent = '🚀 开始翻译';
+                stopTimer(); hideProgress(); btn.disabled = false; btn.textContent = '🚀 开始翻译';
                 showToast(err.message, 'error');
             });
     };
+
+    var timerStart = null;
+    var timerInterval = null;
+
+    function startTimer() {
+        timerStart = Date.now();
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(function() {
+            var elapsed = Math.floor((Date.now() - timerStart) / 1000);
+            var min = Math.floor(elapsed / 60);
+            var sec = elapsed % 60;
+            var el = document.getElementById('timerText');
+            if (el) el.textContent = '⏱️ 用时 ' + (min > 0 ? min + '分' : '') + sec + '秒';
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        if (timerStart) {
+            var elapsed = Math.floor((Date.now() - timerStart) / 1000);
+            var min = Math.floor(elapsed / 60);
+            var sec = elapsed % 60;
+            var el = document.getElementById('timerText');
+            if (el) el.textContent = '✅ 共用时 ' + (min > 0 ? min + '分' : '') + sec + '秒';
+        }
+    }
 
     function startPolling(taskId, total) {
         var btn = document.getElementById('translateBtn');
