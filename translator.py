@@ -280,3 +280,4 @@ def batch_translate(texts, engine='google', source='auto', target='zh-CN', api_k
             errors.append(f'Batch {i // batch_size + 1}: {str(e)}')
 
     return results, errors
+# LLM batch size: 30
