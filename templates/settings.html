@@ -216,17 +216,20 @@ function hideAddForm() {
     editingId = null;
 }
 
-function editConfig(id, name, baseUrl, model) {
-    editingId = id;
-    document.getElementById('formTitle').textContent = '编辑配置';
-    document.getElementById('cfgPreset').value = '';
-    document.getElementById('cfgName').value = name;
-    document.getElementById('cfgBaseUrl').value = baseUrl;
-    document.getElementById('cfgApiKey').value = '';
-    document.getElementById('cfgModel').value = model;
-    document.getElementById('saveBtn').textContent = '💾 更新';
-    document.getElementById('addForm').style.display = 'block';
-    document.getElementById('cfgName').focus();
+function editConfig(id) {
+    fetch('/api/llm-configs/' + id + '/full').then(function(r){return r.json();}).then(function(cfg){
+        editingId = id;
+        document.getElementById('formTitle').textContent = '编辑配置';
+        document.getElementById('cfgPreset').value = '';
+        document.getElementById('cfgName').value = cfg.name || '';
+        document.getElementById('cfgBaseUrl').value = cfg.base_url || '';
+        document.getElementById('cfgApiKey').value = cfg.api_key || '';
+        document.getElementById('cfgModel').value = cfg.model || '';
+        document.getElementById('cfgModelSelect').style.display = 'none';
+        document.getElementById('saveBtn').textContent = '💾 更新';
+        document.getElementById('addForm').style.display = 'block';
+        document.getElementById('cfgName').focus();
+    });
 }
 
 function saveConfig() {

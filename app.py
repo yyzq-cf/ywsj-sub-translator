@@ -565,6 +565,16 @@ def test_llm():
     return jsonify({'ok': ok, 'message': msg})
 
 
+@app.route('/api/llm-configs/<config_id>/full')
+@login_required
+def get_llm_config_full(config_id):
+    """Get full config including API key for editing."""
+    for cfg in load_llm_configs():
+        if cfg['id'] == config_id:
+            return jsonify(cfg)
+    return jsonify({'error': '配置不存在'}), 404
+
+
 @app.route('/api/llm-presets')
 @login_required
 def llm_presets():
