@@ -414,14 +414,16 @@
             });
     };
 
-    // ===== Translate =====
+    // ===== Translate with progress polling =====
+
+    var pollTimer = null;
 
     window.translateFile = function() {
         if (!selectedFile) { showToast('\u8bf7\u5148\u9009\u62e9\u6587\u4ef6', 'error'); return; }
         var btn = document.getElementById('translateBtn');
         btn.disabled = true;
         btn.textContent = '\u23f3 \u7ffb\u8bd1\u4e2d...';
-        showProgress('\u6b63\u5728\u7ffb\u8bd1\uff0c\u8bf7\u8010\u5fc3\u7b49\u5f85...');
+        showProgress('\u63d0\u4ea4\u7ffb\u8bd1\u4efb\u52a1...');
 
         var formData = new FormData();
         formData.append('file', selectedFile);
@@ -432,29 +434,10 @@
         formData.append('base_url', document.getElementById('baseUrl').value);
 
         fetch('/api/translate', { method: 'POST', body: formData })
-            .then(function(r) {
-                if (!r.ok) {
-                    return r.json().then(function(data) { throw new Error(data.error || '\u7ffb\u8bd1\u5931\u8d25'); });
-                }
-                var disposition = r.headers.get('Content-Disposition') || '';
-                var m = disposition.match(/filename="(.+?)"/);
-                var filename = m ? m[1] : 'translated.srt';
-                return r.blob().then(function(blob) {
-                    var url = URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                });
-            })
-            .then(function() {
-                hideProgress();
-                btn.disabled = false;
-                btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
-                showToast('\u7ffb\u8bd1\u5b8c\u6210\uff0c\u5df2\u5f00\u59cb\u4e0b\u8f7d', 'success');
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) { throw new Error(data.error); }
+                startPolling(data.task_id, data.total);
             })
             .catch(function(err) {
                 hideProgress();
@@ -463,6 +446,79 @@
                 showToast(err.message, 'error');
             });
     };
+
+    function startPolling(taskId, total) {
+        var btn = document.getElementById('translateBtn');
+        var fill = document.getElementById('progressFill');
+        var text = document.getElementById('progressText');
+
+        pollTimer = setInterval(function() {
+            fetch('/api/progress/' + taskId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        clearInterval(pollTimer);
+                        hideProgress();
+                        btn.disabled = false;
+                        btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
+                        showToast(data.error, 'error');
+                        return;
+                    }
+                    var done = data.done || 0;
+                    var tot = data.total || total;
+                    var pct = tot > 0 ? Math.round(done / tot * 100) : 0;
+                    fill.style.width = pct + '%';
+                    text.textContent = '\u7ffb\u8bd1\u8fdb\u5ea6 ' + done + '/' + tot + ' (' + pct + '%)';
+
+                    if (data.status === 'done') {
+                        clearInterval(pollTimer);
+                        fill.style.width = '100%';
+                        text.textContent = '\u7ffb\u8bd1\u5b8c\u6210\uff01\u6b63\u5728\u4e0b\u8f7d...';
+                        // Trigger download
+                        fetch('/api/download/' + taskId)
+                            .then(function(r) {
+                                if (!r.ok) { throw new Error('\u4e0b\u8f7d\u5931\u8d25'); }
+                                var disposition = r.headers.get('Content-Disposition') || '';
+                                var m = disposition.match(/filename="(.+?)"/);
+                                var filename = m ? m[1] : 'translated.srt';
+                                return r.blob().then(function(blob) {
+                                    var url = URL.createObjectURL(blob);
+                                    var a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = filename;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                });
+                            })
+                            .then(function() {
+                                setTimeout(function() { hideProgress(); }, 1500);
+                                btn.disabled = false;
+                                btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
+                                var msg = '\u7ffb\u8bd1\u5b8c\u6210\uff0c\u5df2\u5f00\u59cb\u4e0b\u8f7d';
+                                if (data.errors && data.errors.length > 0) {
+                                    msg += '\uff08' + data.errors.length + '\u6761\u9519\u8bef\uff09';
+                                }
+                                showToast(msg, 'success');
+                            })
+                            .catch(function(err) {
+                                hideProgress();
+                                btn.disabled = false;
+                                btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
+                                showToast(err.message, 'error');
+                            });
+                    }
+                })
+                .catch(function(err) {
+                    clearInterval(pollTimer);
+                    hideProgress();
+                    btn.disabled = false;
+                    btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
+                    showToast('\u8f6e\u8be2\u5931\u8d25: ' + err.message, 'error');
+                });
+        }, 800);
+    }
 
     function esc(s) {
         var d = document.createElement('div');
