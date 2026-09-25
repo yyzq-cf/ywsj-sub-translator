@@ -244,6 +244,21 @@
         <div class="progress-text" id="progressText">翻译中...</div>
     </div>
 
+    <!-- Preview Card -->
+    <div class="card preview-section" id="previewSection">
+        <div class="card-title">📋 预览（前10条）</div>
+        <div class="editor-table-wrap">
+            <table class="editor-table">
+                <thead><tr>
+                    <th class="col-idx">#</th>
+                    <th class="col-time">时间轴</th>
+                    <th class="col-original">原文</th>
+                </tr></thead>
+                <tbody id="previewBody"></tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Editor Card -->
     <div class="card editor-section" id="editorSection">
         <div class="editor-toolbar">
@@ -439,6 +454,16 @@
             .then(function(data) {
                 hideProgress();
                 if (data.error) { showToast(data.error, 'error'); return; }
+                var body = document.getElementById('previewBody');
+                body.innerHTML = '';
+                data.preview.forEach(function(e, i) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td class="col-idx">' + (i+1) + '</td>' +
+                        '<td class="col-time">' + esc(e.start) + '<br>\u2192 ' + esc(e.end) + '</td>' +
+                        '<td class="col-original">' + esc(e.text) + '</td>';
+                    body.appendChild(tr);
+                });
+                document.getElementById('previewSection').classList.add('show');
                 showToast('共 ' + data.total + ' 条字幕，格式: ' + data.format, 'success');
             })
             .catch(function(err) { hideProgress(); showToast('预览失败: ' + err.message, 'error'); });
@@ -450,6 +475,7 @@
         var btn = document.getElementById('translateBtn');
         btn.disabled = true; btn.textContent = '⏳ 翻译中...';
         document.getElementById('editorSection').classList.remove('show');
+        document.getElementById('previewSection').classList.remove('show');
         showProgress('提交翻译任务...');
 
         var formData = new FormData();
