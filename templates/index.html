@@ -460,8 +460,6 @@
         if (!found) targetSel.value = defaultTarget;
         document.getElementById('apiKeyRow').style.display = 'none';
         document.getElementById('baseUrlRow').style.display = 'none';
-        document.getElementById('llmRow').style.display = 'none';
-        document.getElementById('llmModelRow').style.display = 'none';
         if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
         if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
         if (engine === 'mymemory') document.getElementById('apiKeyRow').style.display = 'flex';
