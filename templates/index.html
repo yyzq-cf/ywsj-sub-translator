@@ -556,7 +556,11 @@
                     var tot = data.total || total;
                     var pct = tot > 0 ? Math.round(done / tot * 100) : 0;
                     fill.style.width = pct + '%';
-                    text.textContent = '翻译进度 ' + done + '/' + tot + ' (' + pct + '%)';
+                    if (data.status === 'pending' || (done === 0 && pct === 0)) {
+                        text.textContent = '正在连接翻译引擎...';
+                    } else {
+                        text.textContent = '翻译进度 ' + done + '/' + tot + ' (' + pct + '%)';
+                    }
 
                     // Live render entries
                     if (data.entries) {
@@ -580,7 +584,7 @@
                     }
                 })
                 .catch(function(err) { clearInterval(pollTimer); hideProgress(); btn.disabled = false; btn.textContent = '🚀 开始翻译'; showToast('轮询失败: ' + err.message, 'error'); });
-        }, 800);
+        }, 500);
     }
 
     // ===== Editor =====
