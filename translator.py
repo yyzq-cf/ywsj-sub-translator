@@ -159,6 +159,18 @@ def test_llm_connection(base_url, api_key, model):
         return False, str(e)
 
 
+# Built-in LLM presets
+LLM_PRESETS = [
+    {'name': '硅基流动 SiliconFlow', 'base_url': 'https://api.siliconflow.cn', 'model': 'Qwen/Qwen2.5-7B-Instruct'},
+    {'name': 'OpenAI', 'base_url': 'https://api.openai.com', 'model': 'gpt-4o-mini'},
+    {'name': 'DeepSeek', 'base_url': 'https://api.deepseek.com', 'model': 'deepseek-chat'},
+    {'name': '智谱 GLM', 'base_url': 'https://open.bigmodel.cn/api/paas', 'model': 'glm-4-flash'},
+    {'name': '月之暗面 Moonshot', 'base_url': 'https://api.moonshot.cn', 'model': 'moonshot-v1-8k'},
+    {'name': 'Ollama 本地', 'base_url': 'http://localhost:11434', 'model': 'qwen2.5:7b'},
+    {'name': '自定义', 'base_url': '', 'model': ''},
+]
+
+
 ENGINES = {
     'google': {'func': translate_google, 'label': 'Google翻译', 'needs_key': False, 'default_target': 'zh-CN'},
     'deepl': {'func': translate_deepl, 'label': 'DeepL', 'needs_key': True, 'default_target': 'ZH'},

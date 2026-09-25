@@ -10,7 +10,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
 
 from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
-from translator import ENGINES, batch_translate, test_llm_connection
+from translator import ENGINES, batch_translate, test_llm_connection, LLM_PRESETS
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -563,6 +563,12 @@ def test_llm():
         return jsonify({'ok': False, 'message': 'API地址和模型不能为空'}), 400
     ok, msg = test_llm_connection(base_url, api_key, model)
     return jsonify({'ok': ok, 'message': msg})
+
+
+@app.route('/api/llm-presets')
+@login_required
+def llm_presets():
+    return jsonify(LLM_PRESETS)
 
 
 @app.route('/health')
