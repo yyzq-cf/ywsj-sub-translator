@@ -254,6 +254,8 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         if i < len(results) and results[i]:
             entry['text'] = results[i]
 
+@app.route('/api/translate', methods=['POST'])
+@login_required
 def start_translate():
     file = request.files.get('file')
     if not file:
