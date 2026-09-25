@@ -246,20 +246,31 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         if not need_translate:
             results.extend(batch_results)
         elif engine == 'llm':
-            # LLM: translate one by one for real-time progress
-            for idx in need_indices:
-                text = batch[idx]
+            # LLM: use smaller batches (3) for progress + speed balance
+            llm_batch = 3
+            for li in range(0, len(need_indices), llm_batch):
+                sub_indices = need_indices[li:li+llm_batch]
+                sub_texts = [batch[idx] for idx in sub_indices]
+                separator = '\n---\n'
+                combined = separator.join(sub_texts)
                 try:
-                    batch_results[idx] = _do_translate(text)
+                    translated = _do_translate(combined)
+                    parts = translated.split('\n---\n')
+                    if len(parts) == len(sub_texts):
+                        for sidx, part in zip(sub_indices, parts):
+                            batch_results[sidx] = part
+                    else:
+                        for sidx, stext in zip(sub_indices, sub_texts):
+                            try:
+                                batch_results[sidx] = _do_translate(stext)
+                            except Exception as e:
+                                errors.append(f'Line {i+sidx+1}: {str(e)}')
                 except Exception as e:
-                    errors.append(f'Line {i+idx+1}: {str(e)}')
-                results_count = len(results) + idx + 1
-                task['done'] = min(results_count, total)
+                    errors.append(f'Batch {i//batch_size+1}: {str(e)}')
+                # Update progress after each sub-batch
+                done_count = len(results) + sum(1 for r in batch_results if r)
+                task['done'] = min(done_count, total)
                 task['status'] = 'translating'
-                for j in range(i, min(i + len(batch), total)):
-                    if j < len(results) + len(batch_results) and batch_results[j - i if j >= i else 0]:
-                        pass
-                # Update entries in real-time
                 for j in range(len(batch_results)):
                     global_j = i + j
                     if global_j < len(entries) and batch_results[j]:
