@@ -1,0 +1,9 @@
+services:
+  sub-translator:
+    image: ywsj/sub-translator:latest
+    container_name: sub-translator
+    ports:
+      - "5200:5200"
+    environment:
+      - APP_VERSION=${APP_VERSION:-dev}
+    restart: unless-stopped

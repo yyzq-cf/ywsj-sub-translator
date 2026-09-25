@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字幕翻译器</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --border: #2a2d3a;
+            --text: #e4e4e7;
+            --muted: #71717a;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+        [data-theme="light"] {
+            --bg: #f5f5f5;
+            --card: #ffffff;
+            --border: #e4e4e7;
+            --text: #1a1a2e;
+            --muted: #71717a;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        .container { max-width: 860px; margin: 0 auto; padding: 20px; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 30px;
+        }
+        header h1 { font-size: 24px; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .version-badge { color: var(--muted); font-size: 13px; }
+        .theme-btn {
+            background: var(--card); border: 1px solid var(--border); color: var(--text);
+            width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 18px;
+        }
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin-bottom: 20px;
+        }
+        .card-title { font-size: 15px; color: var(--muted); margin-bottom: 16px; }
+        .drop-zone {
+            border: 2px dashed var(--border); border-radius: 10px;
+            padding: 40px; text-align: center; cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
+        }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(59,130,246,0.05); }
+        .drop-zone p { color: var(--muted); }
+        .drop-zone .icon { font-size: 36px; margin-bottom: 8px; }
+        .file-info {
+            display: none; align-items: center; gap: 8px; justify-content: center;
+            padding: 12px; background: rgba(59,130,246,0.1); border-radius: 8px; margin-top: 12px;
+        }
+        .file-info.show { display: flex; }
+        select, input[type="text"], input[type="password"] {
+            background: var(--bg); border: 1px solid var(--border); color: var(--text);
+            padding: 10px 12px; border-radius: 8px; width: 100%; font-size: 14px;
+        }
+        select:focus, input:focus { outline: none; border-color: var(--accent); }
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-group { flex: 1; }
+        .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+        .btn {
+            background: var(--accent); color: white; border: none;
+            padding: 12px 24px; border-radius: 8px; cursor: pointer;
+            font-size: 15px; font-weight: 600; transition: background 0.2s;
+        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: var(--bg); color: var(--text); border: 1px solid var(--border);
+        }
+        .btn-row { display: flex; gap: 12px; margin-top: 8px; }
+        .progress { display: none; margin-top: 16px; }
+        .progress.show { display: block; }
+        .progress-bar {
+            height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: var(--accent); width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text { color: var(--muted); font-size: 13px; margin-top: 8px; text-align: center; }
+        .preview-section { display: none; }
+        .preview-section.show { display: block; }
+        table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+        }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-weight: 600; }
+        td.text-col { max-width: 300px; word-break: break-word; }
+        .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 0; }
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 999;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .toast.error { background: var(--error); color: white; }
+        .toast.success { background: var(--success); color: white; }
+        a { color: var(--accent); text-decoration: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🎬 字幕翻译器</h1>
+        <div class="header-right">
+            <span class="version-badge" id="version">{{ version }}</span>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+        </div>
+    </header>
+
+    <!-- Upload Card -->
+    <div class="card">
+        <div class="card-title">📤 第一步：上传字幕文件</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="icon">📁</div>
+            <p>点击或拖拽字幕文件到这里</p>
+            <p style="font-size:12px;margin-top:4px;">支持 SRT / VTT / ASS 格式，UTF-8 或 GBK 编码</p>
+        </div>
+        <input type="file" id="fileInput" accept=".srt,.vtt,.ass,.ssa,.sub" style="display:none">
+        <div class="file-info" id="fileInfo">
+            <span id="fileName"></span>
+            <span id="fileSize"></span>
+        </div>
+    </div>
+
+    <!-- Settings Card -->
+    <div class="card">
+        <div class="card-title">⚙️ 第二步：选择翻译设置</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>翻译引擎</label>
+                <select id="engine">
+                    {% for key, info in engines.items() %}
+                    <option value="{{ key }}">{{ info.label }}{% if info.needs_key %} (需API Key){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>源语言</label>
+                <select id="source">
+                    <option value="auto">自动检测</option>
+                    <option value="en">英语</option>
+                    <option value="ja">日语</option>
+                    <option value="ko">韩语</option>
+                    <option value="fr">法语</option>
+                    <option value="de">德语</option>
+                    <option value="es">西班牙语</option>
+                    <option value="ru">俄语</option>
+                    <option value="zh-CN">中文(简体)</option>
+                    <option value="zh-TW">中文(繁体)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>目标语言</label>
+                <select id="target">
+                    <option value="zh-CN">中文(简体)</option>
+                    <option value="zh-TW">中文(繁体)</option>
+                    <option value="en">英语</option>
+                    <option value="ja">日语</option>
+                    <option value="ko">韩语</option>
+                    <option value="fr">法语</option>
+                    <option value="de">德语</option>
+                    <option value="es">西班牙语</option>
+                    <option value="ru">俄语</option>
+                    <option value="vi">越南语</option>
+                    <option value="th">泰语</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row" id="apiKeyRow" style="display:none;">
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="apiKey" placeholder="输入API Key（如需）">
+            </div>
+        </div>
+        <div class="form-row" id="baseUrlRow" style="display:none;">
+            <div class="form-group">
+                <label>LibreTranslate 服务地址</label>
+                <input type="text" id="baseUrl" placeholder="http://localhost:5001" value="http://localhost:5001">
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="previewFile()">👁️ 预览前10条</button>
+            <button class="btn" onclick="translateFile()" id="translateBtn">🚀 开始翻译</button>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress" id="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">翻译中...</div>
+    </div>
+
+    <!-- Preview -->
+    <div class="card preview-section" id="previewSection">
+        <div class="card-title">📋 预览（前10条）</div>
+        <table>
+            <thead><tr><th>#</th><th>时间</th><th>原文</th><th>译文</th></tr></thead>
+            <tbody id="previewBody"></tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>ywsj-sub-translator · <a href="https://github.com/yyzq-cf/ywsj-sub-translator" target="_blank">GitHub</a></p>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+    var selectedFile = null;
+
+    // File input
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        if (e.target.files.length) setFile(e.target.files[0]);
+    });
+
+    // Drag & drop
+    var dz = document.getElementById('dropZone');
+    dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', function() { dz.classList.remove('dragover'); });
+    dz.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dz.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            setFile(e.dataTransfer.files[0]);
+            document.getElementById('fileInput').files = e.dataTransfer.files;
+        }
+    });
+
+    function setFile(file) {
+        selectedFile = file;
+        var info = document.getElementById('fileInfo');
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = '(' + formatSize(file.size) + ')';
+        info.classList.add('show');
+    }
+    window.setFile = setFile;
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    // Engine change -> show/hide API key
+    document.getElementById('engine').addEventListener('change', function() {
+        var engine = this.value;
+        var keyRow = document.getElementById('apiKeyRow');
+        var urlRow = document.getElementById('baseUrlRow');
+        keyRow.style.display = 'none';
+        urlRow.style.display = 'none';
+        if (engine === 'deepl') keyRow.style.display = 'flex';
+        if (engine === 'libre') { keyRow.style.display = 'flex'; urlRow.style.display = 'flex'; }
+        if (engine === 'mymemory') keyRow.style.display = 'flex';
+    });
+
+    function showToast(msg, type) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show ' + (type || '');
+        setTimeout(function() { t.classList.remove('show'); }, 3000);
+    }
+    window.showToast = showToast;
+
+    function showProgress(msg) {
+        var p = document.getElementById('progress');
+        p.classList.add('show');
+        document.getElementById('progressText').textContent = msg;
+    }
+
+    function hideProgress() {
+        document.getElementById('progress').classList.remove('show');
+    }
+
+    // Preview
+    window.previewFile = function() {
+        if (!selectedFile) { showToast('请先选择文件', 'error'); return; }
+        var formData = new FormData();
+        formData.append('file', selectedFile);
+        showProgress('解析中...');
+        fetch('/api/preview', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                hideProgress();
+                if (data.error) { showToast(data.error, 'error'); return; }
+                var body = document.getElementById('previewBody');
+                body.innerHTML = '';
+                data.preview.forEach(function(e) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + esc(e.index) + '</td>' +
+                        '<td>' + esc(e.start) + '<br>→ ' + esc(e.end) + '</td>' +
+                        '<td class="text-col">' + esc(e.text) + '</td>' +
+                        '<td class="text-col" style="color:var(--muted)">—</td>';
+                    body.appendChild(tr);
+                });
+                document.getElementById('previewSection').classList.add('show');
+                showToast('共 ' + data.total + ' 条字幕', 'success');
+            })
+            .catch(function(err) {
+                hideProgress();
+                showToast('预览失败: ' + err.message, 'error');
+            });
+    };
+
+    // Translate
+    window.translateFile = function() {
+        if (!selectedFile) { showToast('请先选择文件', 'error'); return; }
+        var btn = document.getElementById('translateBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ 翻译中...';
+        showProgress('正在翻译，请耐心等待...');
+
+        var formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('engine', document.getElementById('engine').value);
+        formData.append('source', document.getElementById('source').value);
+        formData.append('target', document.getElementById('target').value);
+        formData.append('api_key', document.getElementById('apiKey').value);
+        formData.append('base_url', document.getElementById('baseUrl').value);
+
+        fetch('/api/translate', { method: 'POST', body: formData })
+            .then(function(r) {
+                if (!r.ok) {
+                    return r.json().then(function(data) { throw new Error(data.error || '翻译失败'); });
+                }
+                // Extract filename from header
+                var disposition = r.headers.get('Content-Disposition') || '';
+                var m = disposition.match(/filename="(.+?)"/);
+                var filename = m ? m[1] : 'translated.srt';
+                return r.blob().then(function(blob) {
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            })
+            .then(function() {
+                hideProgress();
+                btn.disabled = false;
+                btn.textContent = '🚀 开始翻译';
+                showToast('翻译完成，已开始下载', 'success');
+            })
+            .catch(function(err) {
+                hideProgress();
+                btn.disabled = false;
+                btn.textContent = '🚀 开始翻译';
+                showToast(err.message, 'error');
+            });
+    };
+
+    function esc(s) {
+        var d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    // Theme toggle
+    window.toggleTheme = function() {
+        var current = document.documentElement.getAttribute('data-theme');
+        if (current === 'light') {
+            document.documentElement.removeAttribute('data-theme');
+            document.getElementById('themeBtn').textContent = '🌙';
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.getElementById('themeBtn').textContent = '☀️';
+            localStorage.setItem('theme', 'light');
+        }
+    };
+
+    var savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.getElementById('themeBtn').textContent = '☀️';
+    }
+})();
+</script>
+</body>
+</html>
