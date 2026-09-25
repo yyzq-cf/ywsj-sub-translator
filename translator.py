@@ -91,7 +91,12 @@ def translate_libre(text, source='auto', target='zh', api_key='', base_url='http
 
 def translate_llm(text, source='auto', target='zh-CN', api_key='', base_url='', model='gpt-4o-mini'):
     """Use LLM via OpenAI-compatible API for translation."""
-    url = base_url.rstrip('/') + '/v1/chat/completions'
+    # Build URL: use /v1/ unless base_url already contains /v4/ or /v1/
+    base = base_url.rstrip('/')
+    if '/v4' in base or '/v1' in base:
+        url = base + '/chat/completions'
+    else:
+        url = base + '/v1/chat/completions'
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',
@@ -133,7 +138,12 @@ def translate_llm(text, source='auto', target='zh-CN', api_key='', base_url='', 
 def test_llm_connection(base_url, api_key, model):
     """Test LLM connection, return (ok, message)."""
     try:
-        url = base_url.rstrip('/') + '/v1/chat/completions'
+        # Build URL: use /v1/ unless base_url already contains /v4/ or /v1/
+        base = base_url.rstrip('/')
+        if '/v4' in base or '/v1' in base:
+            url = base + '/chat/completions'
+        else:
+            url = base + '/v1/chat/completions'
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
@@ -185,7 +195,11 @@ def test_llm_connection(base_url, api_key, model):
 
 def fetch_llm_models(base_url, api_key):
     """Fetch available models from OpenAI-compatible /v1/models endpoint."""
-    url = base_url.rstrip('/') + '/v1/models'
+    base = base_url.rstrip('/')
+    if '/v4' in base or '/v1' in base:
+        url = base + '/models'
+    else:
+        url = base + '/v1/models'
     headers = {'Authorization': f'Bearer {api_key}'}
     resp = requests.get(url, headers=headers, timeout=15)
     resp.raise_for_status()
