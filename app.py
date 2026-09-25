@@ -179,79 +179,81 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     batch_size = 10
 
     def _is_already_target(text, target):
-        """Check if text is already in the target language."""
         if target.startswith('zh'):
-            # Has Chinese characters = already Chinese
-            return any('一' <= c <= '鿿' for c in text)
+            return any('\u4e00' <= c <= '\u9fff' for c in text)
         if target == 'en':
-            # Has Latin chars and no CJK = likely already English
             has_latin = any('a' <= c.lower() <= 'z' for c in text)
-            has_cjk = any('一' <= c <= '鿿' for c in text)
+            has_cjk = any('\u4e00' <= c <= '\u9fff' for c in text)
             return has_latin and not has_cjk
         if target == 'ja':
-            return any('぀' <= c <= 'ゟ' or '゠' <= c <= 'ヿ' for c in text)
+            return any('\u3040' <= c <= '\u309f' or '\u30a0' <= c <= '\u30ff' for c in text)
         if target == 'ko':
-            return any('가' <= c <= '힯' for c in text)
+            return any('\uac00' <= c <= '\ud7af' for c in text)
         return False
+
+    def _do_translate(text):
+        if engine == 'libre':
+            return func(text, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
+        elif engine == 'deepl':
+            return func(text, source=source, target=target, api_key=api_key)
+        elif engine == 'mymemory':
+            return func(text, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
+        else:
+            return func(text, source=source, target=target, api_key=api_key)
 
     for i in range(0, total, batch_size):
         batch = texts[i:i + batch_size]
-        separator = '\n---\n'
-        combined = separator.join(batch)
-        try:
-            if engine == 'libre':
-                translated = func(combined, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
-            elif engine == 'deepl':
-                translated = func(combined, source=source, target=target, api_key=api_key)
-            elif engine == 'mymemory':
-                translated = func(combined, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
+        # Separate entries that need translation from those already in target language
+        need_translate = []
+        need_indices = []
+        batch_results = []
+        for j, text in enumerate(batch):
+            if _is_already_target(text, target):
+                batch_results.append(text)
             else:
-                translated = func(combined, source=source, target=target, api_key=api_key)
-            parts = translated.split('\n---\n')
-            if len(parts) == len(batch):
-                results.extend(parts)
-            else:
-                for text in batch:
-                    try:
-                        if engine == 'libre':
-                            r = func(text, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
-                        elif engine == 'deepl':
-                            r = func(text, source=source, target=target, api_key=api_key)
-                        elif engine == 'mymemory':
-                            r = func(text, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
-                        else:
-                            r = func(text, source=source, target=target, api_key=api_key)
-                        results.append(r)
-                    except Exception as e:
-                        results.append(text)
-                        errors.append(f'Line {len(results)}: {str(e)}')
-            import time
-            time.sleep(0.3)
-        except Exception as e:
-            results.extend(batch)
-            errors.append(f'Batch {i // batch_size + 1}: {str(e)}')
-            logger.error(f'Batch {i//batch_size+1} failed: {e}')
+                batch_results.append(None)
+                need_translate.append(text)
+                need_indices.append(len(batch_results) - 1)
+
+        if not need_translate:
+            results.extend(batch_results)
+        else:
+            separator = '\n---\n'
+            combined = separator.join(need_translate)
+            try:
+                translated = _do_translate(combined)
+                parts = translated.split('\n---\n')
+                if len(parts) == len(need_translate):
+                    for idx, part in zip(need_indices, parts):
+                        batch_results[idx] = part
+                else:
+                    # Fallback: translate one by one
+                    for idx in need_indices:
+                        text = batch_results[idx]
+                        try:
+                            batch_results[idx] = _do_translate(text)
+                        except Exception as e:
+                            errors.append(f'Line {i+idx+1}: {str(e)}')
+                import time
+                time.sleep(0.3)
+            except Exception as e:
+                for idx in need_indices:
+                    pass  # Keep original text
+                errors.append(f'Batch {i // batch_size + 1}: {str(e)}')
+                logger.error(f'Batch {i//batch_size+1} failed: {e}')
+
+            results.extend(batch_results)
 
         task['done'] = min(len(results), total)
         task['status'] = 'translating'
         for j in range(i, min(i + len(batch), total)):
-            if j < len(results):
+            if j < len(results) and results[j]:
                 entries[j]['text'] = results[j]
 
     for i, entry in enumerate(entries):
-        entry['text'] = results[i] if i < len(results) else entry['text']
+        if i < len(results) and results[i]:
+            entry['text'] = results[i]
 
-    out_fmt = detected_fmt if output_format == 'auto' else output_format
-    result_text = rebuild(entries, out_fmt, original_content=content)
-    task['result'] = result_text
-    task['errors'] = errors
-    task['status'] = 'done'
-    task['done'] = total
-    task['output_fmt'] = out_fmt
-
-
-@app.route('/api/translate', methods=['POST'])
-@login_required
 def start_translate():
     file = request.files.get('file')
     if not file:
