@@ -446,7 +446,7 @@
     window.onEngineChange = function() {
         var engine = document.getElementById('engine').value;
         var langs = ENGINE_LANGS[engine] || GOOGLE_LANGS;
-        if (engine.startsWith('llm:')) langs = GOOGLE_LANGS;
+        if (engine.startsWith('llm:') || engine.startsWith('tapi:')) langs = GOOGLE_LANGS;
         var curSource = document.getElementById('source').value || 'auto';
         var curTarget = document.getElementById('target').value || 'zh-CN';
         var defaultTarget = (engine === 'deepl') ? 'zh' : 'zh-CN';
@@ -855,6 +855,7 @@
     window.loadLlmConfigs = loadLlmConfigs;
 
     function loadLlmConfigsToEngine() {
+        // Load LLM configs
         fetch('/api/llm-configs').then(function(r){return r.json();}).then(function(configs){
             var sel = document.getElementById('engine');
             // Remove old LLM entries
@@ -868,20 +869,37 @@
                 sep.textContent = '── LLM 大模型 ──';
                 sel.appendChild(sep);
             }
-            // Add each config as an engine option
             configs.forEach(function(c) {
                 var opt = document.createElement('option');
                 opt.value = 'llm:' + c.id;
                 opt.textContent = c.name + ' · ' + c.model;
                 sel.appendChild(opt);
             });
-            // If no configs, add a placeholder
             if (configs.length === 0) {
                 var opt = document.createElement('option');
                 opt.value = 'llm:none';
                 opt.textContent = 'LLM（请先配置）';
                 sel.appendChild(opt);
             }
+        });
+        // Load translate API configs
+        fetch('/api/translate-api-configs').then(function(r){return r.json();}).then(function(configs){
+            var sel = document.getElementById('engine');
+            for (var i = sel.options.length - 1; i >= 0; i--) {
+                if (sel.options[i].value.startsWith('tapi:')) sel.remove(i);
+            }
+            if (configs.length > 0) {
+                var sep = document.createElement('option');
+                sep.disabled = true;
+                sep.textContent = '── 翻译API ──';
+                sel.appendChild(sep);
+            }
+            configs.forEach(function(c) {
+                var opt = document.createElement('option');
+                opt.value = 'tapi:' + c.id;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            });
         });
     }
     window.loadLlmConfigsToEngine = loadLlmConfigsToEngine;

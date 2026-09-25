@@ -213,6 +213,152 @@ def fetch_llm_models(base_url, api_key):
     return models
 
 
+# ===== Traditional translation API functions =====
+
+def translate_tencent(text, source='auto', target='zh', api_key='', secret_key=''):
+    """Use Tencent Machine Translation API."""
+    import hashlib, hmac, time, random, base64
+    secret_id = api_key
+    secret_key_val = secret_key
+
+    region = 'ap-beijing'
+    endpoint = 'tmt.tencentcloudapi.com'
+    params = {
+        'SourceText': text,
+        'Source': source if source != 'auto' else 'auto',
+        'Target': target if target != 'zh-CN' else 'zh',
+        'ProjectId': '0',
+    }
+
+    # Build signature
+    service = 'tmt'
+    timestamp = int(time.time())
+    date = time.strftime('%Y-%m-%d', time.gmtime(timestamp))
+
+    # Canonical request
+    http_method = 'POST'
+    canonical_uri = '/'
+    canonical_querystring = ''
+    canonical_headers = 'content-type:application/json; charset=utf-8\nhost:' + endpoint + '\nx-tc-action:TextTranslate\n'
+    signed_headers = 'content-type;host;x-tc-action'
+    hashed_payload = hashlib.sha256(json.dumps(params).encode('utf-8')).hexdigest()
+    canonical_request = http_method + '\n' + canonical_uri + '\n' + canonical_querystring + '\n' + canonical_headers + '\n' + signed_headers + '\n' + hashed_payload
+
+    # String to sign
+    algorithm = 'TC3-HMAC-SHA256'
+    credential_scope = date + '/' + service + '/tc3_request'
+    hashed_canonical_request = hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()
+    string_to_sign = algorithm + '\n' + str(timestamp) + '\n' + credential_scope + '\n' + hashed_canonical_request
+
+    # Sign
+    def _sign(key, msg):
+        return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+
+    secret_date = _sign(('TC3' + secret_key_val).encode('utf-8'), date)
+    secret_service = _sign(secret_date, service)
+    secret_signing = _sign(secret_service, 'tc3_request')
+    signature = hmac.new(secret_signing, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    authorization = algorithm + ' Credential=' + secret_id + '/' + credential_scope + ', SignedHeaders=' + signed_headers + ', Signature=' + signature
+
+    headers = {
+        'Authorization': authorization,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Host': endpoint,
+        'X-TC-Action': 'TextTranslate',
+        'X-TC-Timestamp': str(timestamp),
+        'X-TC-Version': '2018-03-21',
+        'X-TC-Region': region,
+    }
+
+    resp = requests.post('https://' + endpoint, json=params, headers=headers, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    return data['Response']['TargetText']
+
+
+def translate_baidu(text, source='auto', target='zh', api_key='', secret_key=''):
+    """Use Baidu Translate API."""
+    import hashlib
+    appid = api_key
+    key = secret_key
+    salt = str(random.randint(32768, 65536))
+    sign_str = appid + text + salt + key
+    sign = hashlib.md5(sign_str.encode('utf-8')).hexdigest()
+
+    # Map language codes
+    baidu_source = source
+    baidu_target = target
+    if source == 'zh-CN': baidu_source = 'zh'
+    if target == 'zh-CN': baidu_target = 'zh'
+    if source == 'zh-TW': baidu_source = 'cht'
+    if target == 'zh-TW': baidu_target = 'cht'
+
+    params = {
+        'q': text,
+        'from': baidu_source,
+        'to': baidu_target,
+        'appid': appid,
+        'salt': salt,
+        'sign': sign,
+    }
+    resp = requests.get('https://fanyi-api.baidu.com/api/trans/vip/translate', params=params, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    if 'error_code' in data:
+        raise Exception(f"Baidu error {data['error_code']}: {data.get('error_msg', '')}")
+    return chr(10).join(item['dst'] for item in data['trans_result'])
+
+
+def translate_youdao(text, source='auto', target='zh-CHS', api_key='', secret_key=''):
+    """Use Youdao Translate API."""
+    import hashlib, base64
+    app_key = api_key
+    app_secret = secret_key
+
+    # Map language codes
+    youdao_source = 'auto'
+    youdao_target = target
+    if target in ('zh-CN', 'zh'): youdao_target = 'zh-CHS'
+    if target == 'zh-TW': youdao_target = 'zh-CHT'
+    if target == 'en': youdao_target = 'en'
+    if target == 'ja': youdao_target = 'ja'
+    if target == 'ko': youdao_target = 'ko'
+    if target == 'fr': youdao_target = 'fr'
+
+    import time as _time
+    salt = str(_time.time())
+    sign_str = app_key + text + salt + app_secret
+    sign = hashlib.sha256(sign_str.encode('utf-8')).hexdigest()
+
+    data = {
+        'q': text,
+        'from': youdao_source,
+        'to': youdao_target,
+        'appKey': app_key,
+        'salt': salt,
+        'sign': sign,
+        'signType': 'v3',
+    }
+
+    resp = requests.post('https://openapi.youdao.com/api', data=data, timeout=15)
+    resp.raise_for_status()
+    result = resp.json()
+    if result.get('errorCode') != '0':
+        raise Exception(f"Youdao error: {result.get('errorCode')}")
+    return chr(10).join(item['tgt'] for item in result.get('translation', []))
+
+
+import random
+
+# Traditional translation API presets
+TRANSLATE_API_PRESETS = [
+    {'name': '腾讯翻译', 'engine': 'tencent', 'key_name': 'SecretId', 'secret_name': 'SecretKey', 'key_url': 'https://console.cloud.tencent.com/cam/capi'},
+    {'name': '百度翻译', 'engine': 'baidu', 'key_name': 'APP ID', 'secret_name': '密钥', 'key_url': 'https://fanyi-api.baidu.com/api/trans/product/desktop'},
+    {'name': '有道翻译', 'engine': 'youdao', 'key_name': '应用ID', 'secret_name': '应用密钥', 'key_url': 'https://ai.youdao.com/console/'},
+]
+
+
 # Built-in LLM presets
 LLM_PRESETS = [
     {'name': '硅基流动 SiliconFlow', 'base_url': 'https://api.siliconflow.cn', 'model': 'Qwen/Qwen2.5-7B-Instruct', 'key_url': 'https://cloud.siliconflow.cn/account/ak'},

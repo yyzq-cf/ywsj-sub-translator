@@ -132,6 +132,48 @@
         </div>
     </div>
 
+    <!-- Translate API Config -->
+    <div class="card">
+        <div class="card-title">🌐 翻译API配置（腾讯/百度/有道）</div>
+        <div id="tapiConfigList"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" onclick="showTapiAddForm()">➕ 添加翻译API</button>
+        </div>
+    </div>
+
+    <!-- Translate API Add/Edit Form -->
+    <div class="card" id="tapiAddForm" style="display:none;">
+        <div class="card-title" id="tapiFormTitle">添加翻译API</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>选择服务商</label>
+                <select id="tapiPreset" onchange="onTapiPresetChange()">
+                    <option value="">— 选择 —</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>备注名称 *</label>
+                <input type="text" id="tapiName" placeholder="如：我的腾讯翻译">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>API Key / ID <a id="tapiKeyLink" href="#" target="_blank" style="font-size:12px; display:none;">获取 →</a></label>
+                <input type="text" id="tapiKey" placeholder="APP ID / SecretId">
+            </div>
+            <div class="form-group">
+                <label>Secret Key / 密钥</label>
+                <input type="password" id="tapiSecret" placeholder="密钥">
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" onclick="hideTapiAddForm()">取消</button>
+            <button class="btn btn-sm" onclick="saveTapiConfig()" id="tapiSaveBtn">💾 保存</button>
+        </div>
+    </div>
+
     <div class="footer">
         <p>ywsj-sub-translator · <a href="https://github.com/yyzq-cf/ywsj-sub-translator" target="_blank">GitHub</a></p>
     </div>
@@ -342,8 +384,113 @@ function toggleTheme() {
 var savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'light') { document.documentElement.setAttribute('data-theme', 'light'); document.getElementById('themeBtn').textContent = '☀️'; }
 
+function loadTapiPresets() {
+    fetch('/api/translate-api-presets').then(function(r){return r.json();}).then(function(presets){
+        var sel = document.getElementById('tapiPreset');
+        presets.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = JSON.stringify(p);
+            opt.textContent = p.name;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+function onTapiPresetChange() {
+    var sel = document.getElementById('tapiPreset');
+    if (!sel.value) return;
+    var p = JSON.parse(sel.value);
+    document.getElementById('tapiName').value = p.name;
+    var keyLabel = document.querySelector('label[for!=""]'); // not used
+    var link = document.getElementById('tapiKeyLink');
+    if (p.key_url) { link.href = p.key_url; link.style.display = 'inline'; } else { link.style.display = 'none'; }
+}
+
+var tapiEditingId = null;
+
+function loadTapiConfigs() {
+    fetch('/api/translate-api-configs').then(function(r){return r.json();}).then(function(configs){
+        var list = document.getElementById('tapiConfigList');
+        list.innerHTML = '';
+        if (configs.length === 0) {
+            list.innerHTML = '<div class="empty-state">暂无配置</div>';
+            return;
+        }
+        configs.forEach(function(c) {
+            var div = document.createElement('div');
+            div.className = 'config-item';
+            var keyInfo = c.has_key ? (c.api_key_masked || '***') : '未设置';
+            var secretInfo = c.has_secret ? (c.secret_key_masked || '***') : '未设置';
+            div.innerHTML = '<div class="config-info">' +
+                '<div class="config-name">' + esc(c.name) + '</div>' +
+                '<div class="config-meta">引擎: ' + esc(c.engine) + ' · Key: ' + keyInfo + ' · Secret: ' + secretInfo + '</div>' +
+                '</div>' +
+                '<div class="config-actions">' +
+                '<button class="btn btn-secondary btn-sm" onclick="editTapiConfig(\''+c.id+'\')">✏️编辑</button>' +
+                '<button class="btn btn-secondary btn-sm" onclick="deleteTapiConfig(\''+c.id+'\',\''+esc(c.name)+'\')" style="color:var(--error);">🗑️删除</button>' +
+                '</div>';
+            list.appendChild(div);
+        });
+    });
+}
+
+function showTapiAddForm() {
+    tapiEditingId = null;
+    document.getElementById('tapiFormTitle').textContent = '添加翻译API';
+    document.getElementById('tapiPreset').value = '';
+    document.getElementById('tapiName').value = '';
+    document.getElementById('tapiKey').value = '';
+    document.getElementById('tapiSecret').value = '';
+    document.getElementById('tapiSaveBtn').textContent = '💾 保存';
+    document.getElementById('tapiAddForm').style.display = 'block';
+}
+
+function hideTapiAddForm() {
+    document.getElementById('tapiAddForm').style.display = 'none';
+    tapiEditingId = null;
+}
+
+function saveTapiConfig() {
+    var name = document.getElementById('tapiName').value.trim();
+    var preset = document.getElementById('tapiPreset').value;
+    var engine = '';
+    if (preset) { engine = JSON.parse(preset).engine; }
+    var apiKey = document.getElementById('tapiKey').value.trim();
+    var secretKey = document.getElementById('tapiSecret').value.trim();
+    if (!name || !engine) { showToast('请选择服务商并填写名称', 'error'); return; }
+
+    if (tapiEditingId) {
+        var body = { name: name };
+        if (apiKey) body.api_key = apiKey;
+        if (secretKey) body.secret_key = secretKey;
+        fetch('/api/translate-api-configs/' + tapiEditingId, {
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast('配置已更新', 'success'); hideTapiAddForm(); loadTapiConfigs(); }
+            else { showToast(data.error || '更新失败', 'error'); }
+        });
+    } else {
+        fetch('/api/translate-api-configs', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name, engine: engine, api_key: apiKey, secret_key: secretKey })
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast('配置已添加', 'success'); hideTapiAddForm(); loadTapiConfigs(); }
+            else { showToast(data.error || '添加失败', 'error'); }
+        });
+    }
+}
+
+function deleteTapiConfig(id, name) {
+    if (!confirm('确认删除：' + name + '？')) return;
+    fetch('/api/translate-api-configs/' + id, { method: 'DELETE' })
+        .then(function(r){return r.json();})
+        .then(function(data){ if (data.ok) { showToast('已删除', 'success'); loadTapiConfigs(); } });
+}
+
 loadPresets();
 loadConfigs();
+loadTapiPresets();
+loadTapiConfigs();
 </script>
 </body>
 </html>

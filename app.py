@@ -10,7 +10,9 @@ from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
 
 from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
-from translator import ENGINES, batch_translate, test_llm_connection, LLM_PRESETS, fetch_llm_models
+from translator import (ENGINES, batch_translate, test_llm_connection, 
+    LLM_PRESETS, fetch_llm_models, TRANSLATE_API_PRESETS,
+    translate_tencent, translate_baidu, translate_youdao)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -73,6 +75,23 @@ def save_llm_configs(configs):
     with open(LLM_CONFIG_FILE, 'w') as f:
         json.dump(configs, f, ensure_ascii=False, indent=2)
     os.chmod(LLM_CONFIG_FILE, 0o600)
+
+
+TRANSLATE_API_CONFIG_FILE = os.path.join(DATA_DIR, "translate_api_configs.json")
+
+
+def load_translate_api_configs():
+    try:
+        with open(TRANSLATE_API_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except (OSError, IOError):
+        return []
+
+
+def save_translate_api_configs(configs):
+    with open(TRANSLATE_API_CONFIG_FILE, 'w') as f:
+        json.dump(configs, f, ensure_ascii=False, indent=2)
+    os.chmod(TRANSLATE_API_CONFIG_FILE, 0o600)
 
 
 def is_auth_enabled():
@@ -187,7 +206,7 @@ def preview():
     })
 
 
-def run_translation_task(task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt, model='gpt-4o-mini'):
+def run_translation_task(task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt, model='gpt-4o-mini', secret_key=''):
     task = tasks[task_id]
     texts = [e['text'] for e in entries]
     total = len(texts)
@@ -351,11 +370,23 @@ def start_translate():
     engine = request.form.get('engine', 'google')
     source = request.form.get('source', 'auto')
 
-    # Parse LLM config: engine can be 'llm:<config_id>' or field 'llm_config_id'
+    # Parse LLM config: engine can be 'llm:<config_id>'
     llm_config_id = request.form.get('llm_config_id', '')
     if engine.startswith('llm:'):
         llm_config_id = engine[4:]
         engine = 'llm'
+
+    # Parse translate API config: engine can be 'tapi:<config_id>'
+    tapi_config = None
+    if engine.startswith('tapi:'):
+        tapi_id = engine[4:]
+        for cfg in load_translate_api_configs():
+            if cfg['id'] == tapi_id:
+                tapi_config = cfg
+                engine = cfg['engine']
+                api_key = cfg.get('api_key', '')
+                secret_key = cfg.get('secret_key', '')
+                break
     target = request.form.get('target', 'zh-CN')
     api_key = request.form.get('api_key', '')
     base_url = request.form.get('base_url', '')
@@ -384,7 +415,7 @@ def start_translate():
         'target': target, 'fmt': detected_fmt if output_format == 'auto' else output_format,
     }
     t = threading.Thread(target=run_translation_task, args=(
-        task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt, model
+        task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt, model, secret_key
     ))
     t.daemon = True
     t.start()
@@ -656,6 +687,81 @@ def get_llm_models():
 @login_required
 def llm_presets():
     return jsonify(LLM_PRESETS)
+
+
+@app.route('/api/translate-api-configs')
+@login_required
+def get_translate_api_configs():
+    configs = load_translate_api_configs()
+    safe = []
+    for c in configs:
+        sc = dict(c)
+        if sc.get('api_key'):
+            sc['api_key_masked'] = sc['api_key'][:6] + '...' if len(sc['api_key']) > 6 else '***'
+            sc['has_key'] = True
+        else:
+            sc['has_key'] = False
+        if sc.get('secret_key'):
+            sc['secret_key_masked'] = sc['secret_key'][:6] + '...' if len(sc['secret_key']) > 6 else '***'
+            sc['has_secret'] = True
+        else:
+            sc['has_secret'] = False
+        sc.pop('api_key', None)
+        sc.pop('secret_key', None)
+        safe.append(sc)
+    return jsonify(safe)
+
+
+@app.route('/api/translate-api-configs', methods=['POST'])
+@login_required
+def add_translate_api_config():
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    engine = data.get('engine', '').strip()
+    api_key = data.get('api_key', '').strip()
+    secret_key = data.get('secret_key', '').strip()
+    if not name or not engine:
+        return jsonify({'error': '名称和引擎不能为空'}), 400
+    configs = load_translate_api_configs()
+    cfg = {
+        'id': str(uuid.uuid4())[:8],
+        'name': name, 'engine': engine,
+        'api_key': api_key, 'secret_key': secret_key,
+    }
+    configs.append(cfg)
+    save_translate_api_configs(configs)
+    return jsonify({'ok': True, 'id': cfg['id']})
+
+
+@app.route('/api/translate-api-configs/<config_id>', methods=['PUT'])
+@login_required
+def update_translate_api_config(config_id):
+    data = request.get_json()
+    configs = load_translate_api_configs()
+    for c in configs:
+        if c['id'] == config_id:
+            if 'name' in data: c['name'] = data['name'].strip()
+            if 'api_key' in data and data['api_key']: c['api_key'] = data['api_key'].strip()
+            if 'secret_key' in data and data['secret_key']: c['secret_key'] = data['secret_key'].strip()
+            save_translate_api_configs(configs)
+            return jsonify({'ok': True})
+    return jsonify({'error': '配置不存在'}), 404
+
+
+@app.route('/api/translate-api-configs/<config_id>', methods=['DELETE'])
+@login_required
+def delete_translate_api_config(config_id):
+    configs = load_translate_api_configs()
+    new_configs = [c for c in configs if c['id'] != config_id]
+    if len(new_configs) == len(configs):
+        return jsonify({'error': '配置不存在'}), 404
+    save_translate_api_configs(new_configs)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/translate-api-presets')
+def get_translate_api_presets():
+    return jsonify(TRANSLATE_API_PRESETS)
 
 
 @app.route('/health')
