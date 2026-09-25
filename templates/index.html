@@ -236,12 +236,7 @@
                 <input type="text" id="baseUrl" placeholder="http://localhost:5001" value="http://localhost:5001">
             </div>
         </div>
-        <div class="form-row" id="llmRow" style="display:none;">
-            <div class="form-group">
-                <label>LLM 模型配置 <a href="/settings" style="font-size:12px;">管理 →</a></label>
-                <select id="llmConfigSelect" onchange="onLlmConfigChange()"></select>
-            </div>
-        </div>
+
         <div class="btn-row">
             <button class="btn btn-secondary" onclick="previewFile()">👁️ 预览前10条</button>
             <button class="btn" onclick="translateFile()" id="translateBtn">🚀 开始翻译</button>
@@ -469,9 +464,8 @@
         if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
         if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
         if (engine === 'mymemory') document.getElementById('apiKeyRow').style.display = 'flex';
-        if (engine === 'llm') {
-            document.getElementById('llmRow').style.display = 'flex';
-            loadLlmConfigsToDropdown();
+        if (engine.startsWith('llm:')) {
+            // LLM config selected - no extra fields needed
         }
         var count = langs.length - 1;
         document.getElementById('langCount').textContent = '支持 ' + count + ' 种语言';
@@ -544,6 +538,7 @@
         var formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('engine', document.getElementById('engine').value);
+        formData.append('llm_config_id', document.getElementById('engine').value.startsWith('llm:') ? document.getElementById('engine').value.substring(4) : '');
         formData.append('source', document.getElementById('source').value);
         formData.append('target', document.getElementById('target').value);
         formData.append('api_key', document.getElementById('apiKey').value);
@@ -711,7 +706,7 @@
                 target: document.getElementById('target').value,
                 api_key: document.getElementById('apiKey').value,
                 base_url: document.getElementById('baseUrl').value,
-                llm_config_id: document.getElementById('llmConfigSelect') ? document.getElementById('llmConfigSelect').value : ''
+                llm_config_id: document.getElementById('engine').value.startsWith('llm:') ? document.getElementById('engine').value.substring(4) : ''
             })
         })
             .then(function(r) { return r.json(); })
@@ -817,39 +812,37 @@
     }
     window.loadLlmConfigs = loadLlmConfigs;
 
-    function loadLlmConfigsToDropdown() {
+    function loadLlmConfigsToEngine() {
         fetch('/api/llm-configs').then(function(r){return r.json();}).then(function(configs){
-            var sel = document.getElementById('llmConfigSelect');
-            sel.innerHTML = '';
+            var sel = document.getElementById('engine');
+            // Remove old LLM entries
+            for (var i = sel.options.length - 1; i >= 0; i--) {
+                if (sel.options[i].value.startsWith('llm:')) sel.remove(i);
+            }
+            // Add separator if we have configs
+            if (configs.length > 0) {
+                var sep = document.createElement('option');
+                sep.disabled = true;
+                sep.textContent = '── LLM 大模型 ──';
+                sel.appendChild(sep);
+            }
+            // Add each config as an engine option
+            configs.forEach(function(c) {
+                var opt = document.createElement('option');
+                opt.value = 'llm:' + c.id;
+                opt.textContent = c.name + ' · ' + c.model;
+                sel.appendChild(opt);
+            });
+            // If no configs, add a placeholder
             if (configs.length === 0) {
-                sel.innerHTML = '<option value="">请先在配置页面添加</option>';
-            } else {
-                configs.forEach(function(c) {
-                    var opt = document.createElement('option');
-                    opt.value = c.id;
-                    opt.textContent = c.name + ' · ' + c.model;
-                    sel.appendChild(opt);
-                });
-                onLlmConfigChange();
+                var opt = document.createElement('option');
+                opt.value = 'llm:none';
+                opt.textContent = 'LLM（请先配置）';
+                sel.appendChild(opt);
             }
         });
     }
-    window.loadLlmConfigsToDropdown = loadLlmConfigsToDropdown;
-
-    window.onLlmConfigChange = function() {
-        var sel = document.getElementById('llmConfigSelect');
-        if (sel.selectedIndex >= 0) {
-            var name = sel.options[sel.selectedIndex].text;
-            // Update engine label to show selected model
-            var engineSel = document.getElementById('engine');
-            for (var i = 0; i < engineSel.options.length; i++) {
-                if (engineSel.options[i].value === 'llm') {
-                    engineSel.options[i].textContent = 'LLM: ' + name;
-                    break;
-                }
-            }
-        }
-    };
+    window.loadLlmConfigsToEngine = loadLlmConfigsToEngine;
 
     window.addLlmConfig = function() {
         var name = document.getElementById('newLlmName').value.trim();
@@ -1011,6 +1004,7 @@
     if (savedTheme === 'light') { document.documentElement.setAttribute('data-theme', 'light'); document.getElementById('themeBtn').textContent = '☀️'; }
 
     onEngineChange();
+    loadLlmConfigsToEngine();
 })();
 </script>
 </body>

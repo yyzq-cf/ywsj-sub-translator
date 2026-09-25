@@ -307,14 +307,18 @@ def start_translate():
 
     engine = request.form.get('engine', 'google')
     source = request.form.get('source', 'auto')
+
+    # Parse LLM config: engine can be 'llm:<config_id>' or field 'llm_config_id'
+    llm_config_id = request.form.get('llm_config_id', '')
+    if engine.startswith('llm:'):
+        llm_config_id = engine[4:]
+        engine = 'llm'
     target = request.form.get('target', 'zh-CN')
     api_key = request.form.get('api_key', '')
     base_url = request.form.get('base_url', '')
     model = request.form.get('model', 'gpt-4o-mini')
     output_format = request.form.get('format', 'auto')
 
-    # LLM engine: load config from saved configs
-    llm_config_id = request.form.get('llm_config_id', '')
     if engine == 'llm' and llm_config_id:
         for cfg in load_llm_configs():
             if cfg['id'] == llm_config_id:
@@ -395,10 +399,15 @@ def retranslate_entry(task_id):
     base_url = data.get('base_url', '')
     model = data.get('model', 'gpt-4o-mini')
     llm_config_id = data.get('llm_config_id', '')
+
+    # Parse llm: prefix
+    if engine.startswith('llm:'):
+        llm_config_id = engine[4:]
+        engine = 'llm'
+
     if index is None:
         return jsonify({'error': '缺少索引'}), 400
 
-    # Load LLM config if specified
     if llm_config_id:
         for cfg in load_llm_configs():
             if cfg['id'] == llm_config_id:
