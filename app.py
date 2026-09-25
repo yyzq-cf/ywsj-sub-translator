@@ -147,6 +147,12 @@ def change_password():
 tasks = {}
 
 
+@app.route('/settings')
+@login_required
+def settings():
+    return render_template('settings.html', version=APP_VERSION)
+
+
 @app.route('/')
 @login_required
 def index():

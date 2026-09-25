@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM配置 - 字幕翻译器</title>
+    <style>
+        :root {
+            --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+            --text: #e4e4e7; --muted: #71717a; --accent: #3b82f6;
+            --accent-hover: #2563eb; --success: #22c55e; --error: #ef4444; --edited: #f59e0b;
+        }
+        [data-theme="light"] {
+            --bg: #f5f5f5; --card: #ffffff; --border: #e4e4e7;
+            --text: #1a1a2e; --muted: #71717a; --accent: #3b82f6;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        .container { max-width: 720px; margin: 0 auto; padding: 20px; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 30px;
+        }
+        header h1 { font-size: 22px; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .nav-links { display: flex; gap: 20px; align-items: center; }
+        .nav-links a { color: var(--muted); font-size: 14px; text-decoration: none; }
+        .nav-links a:hover { color: var(--accent); }
+        .nav-links a.active { color: var(--accent); font-weight: 600; }
+        .version-badge { color: var(--muted); font-size: 13px; }
+        .theme-btn {
+            background: var(--card); border: 1px solid var(--border); color: var(--text);
+            width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 18px;
+        }
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin-bottom: 20px;
+        }
+        .card-title { font-size: 15px; color: var(--muted); margin-bottom: 16px; }
+        select, input[type="text"], input[type="password"] {
+            background: var(--bg); border: 1px solid var(--border); color: var(--text);
+            padding: 10px 12px; border-radius: 8px; width: 100%; font-size: 14px;
+        }
+        select:focus, input:focus { outline: none; border-color: var(--accent); }
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-group { flex: 1; }
+        .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+        .btn {
+            background: var(--accent); color: white; border: none;
+            padding: 10px 20px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 600; transition: background 0.2s;
+        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-row { display: flex; gap: 12px; margin-top: 8px; }
+        .config-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+        }
+        .config-info { flex: 1; }
+        .config-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+        .config-meta { font-size: 12px; color: var(--muted); }
+        .config-actions { display: flex; gap: 6px; }
+        .empty-state { text-align: center; color: var(--muted); padding: 30px; }
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 999;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .toast.error { background: var(--error); color: white; }
+        .toast.success { background: var(--success); color: white; }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; width: 480px; max-width: 90vw;
+        }
+        .modal h3 { margin-bottom: 16px; }
+        .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 0; }
+        a { color: var(--accent); text-decoration: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="nav-links">
+            <h1>🎬 字幕翻译器</h1>
+            <a href="/">翻译</a>
+            <a href="/settings" class="active">⚙️ LLM配置</a>
+        </div>
+        <div class="header-right">
+            <span class="version-badge">{{ version }}</span>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+        </div>
+    </header>
+
+    <!-- Config List -->
+    <div class="card">
+        <div class="card-title">🤖 已配置的 LLM 模型</div>
+        <div id="configList"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" onclick="showAddForm()">➕ 添加新配置</button>
+        </div>
+    </div>
+
+    <!-- Add/Edit Form -->
+    <div class="card" id="addForm" style="display:none;">
+        <div class="card-title" id="formTitle">添加新配置</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>备注名称 *</label>
+                <input type="text" id="cfgName" placeholder="如：GPT-4o / DeepSeek / 本地Ollama">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>API Base URL *</label>
+                <input type="text" id="cfgBaseUrl" placeholder="https://api.openai.com" value="https://api.openai.com">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="cfgApiKey" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+                <label>模型名称 *</label>
+                <input type="text" id="cfgModel" placeholder="gpt-4o-mini" value="gpt-4o-mini">
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" onclick="hideAddForm()">取消</button>
+            <button class="btn btn-secondary btn-sm" onclick="testConfig()">🔌 测试连接</button>
+            <button class="btn btn-sm" onclick="saveConfig()" id="saveBtn">💾 保存</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>ywsj-sub-translator · <a href="https://github.com/yyzq-cf/ywsj-sub-translator" target="_blank">GitHub</a></p>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show ' + (type || '');
+    setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+var editingId = null;
+
+function loadConfigs() {
+    fetch('/api/llm-configs').then(function(r){return r.json();}).then(function(configs){
+        var list = document.getElementById('configList');
+        list.innerHTML = '';
+        if (configs.length === 0) {
+            list.innerHTML = '<div class="empty-state">暂无配置，点击下方按钮添加</div>';
+            return;
+        }
+        configs.forEach(function(c) {
+            var div = document.createElement('div');
+            div.className = 'config-item';
+            var keyInfo = c.has_key ? ('密钥: ' + c.api_key_masked) : '未设置密钥';
+            div.innerHTML =
+                '<div class="config-info">' +
+                    '<div class="config-name">' + esc(c.name) + '</div>' +
+                    '<div class="config-meta">' + esc(c.base_url) + ' · ' + esc(c.model) + ' · ' + keyInfo + '</div>' +
+                '</div>' +
+                '<div class="config-actions">' +
+                    '<button class="btn btn-secondary btn-sm" onclick="testConfigById(\'' + c.id + '\')">🔌测试</button>' +
+                    '<button class="btn btn-secondary btn-sm" onclick="editConfig(\'' + c.id + '\',\'' + esc(c.name) + '\',\'' + esc(c.base_url) + '\',\'' + esc(c.model) + '\')">✏️编辑</button>' +
+                    '<button class="btn btn-secondary btn-sm" onclick="deleteConfig(\'' + c.id + '\',\'' + esc(c.name) + '\')" style="color:var(--error);">🗑️删除</button>' +
+                '</div>';
+            list.appendChild(div);
+        });
+    });
+}
+
+function showAddForm() {
+    editingId = null;
+    document.getElementById('formTitle').textContent = '添加新配置';
+    document.getElementById('cfgName').value = '';
+    document.getElementById('cfgBaseUrl').value = 'https://api.openai.com';
+    document.getElementById('cfgApiKey').value = '';
+    document.getElementById('cfgModel').value = 'gpt-4o-mini';
+    document.getElementById('saveBtn').textContent = '💾 保存';
+    document.getElementById('addForm').style.display = 'block';
+    document.getElementById('cfgName').focus();
+}
+
+function hideAddForm() {
+    document.getElementById('addForm').style.display = 'none';
+    editingId = null;
+}
+
+function editConfig(id, name, baseUrl, model) {
+    editingId = id;
+    document.getElementById('formTitle').textContent = '编辑配置';
+    document.getElementById('cfgName').value = name;
+    document.getElementById('cfgBaseUrl').value = baseUrl;
+    document.getElementById('cfgApiKey').value = '';
+    document.getElementById('cfgModel').value = model;
+    document.getElementById('saveBtn').textContent = '💾 更新';
+    document.getElementById('addForm').style.display = 'block';
+    document.getElementById('cfgName').focus();
+}
+
+function saveConfig() {
+    var name = document.getElementById('cfgName').value.trim();
+    var baseUrl = document.getElementById('cfgBaseUrl').value.trim();
+    var apiKey = document.getElementById('cfgApiKey').value.trim();
+    var model = document.getElementById('cfgModel').value.trim();
+    if (!name || !baseUrl || !model) { showToast('名称、API地址、模型不能为空', 'error'); return; }
+
+    if (editingId) {
+        var body = { name: name, base_url: baseUrl, model: model };
+        if (apiKey) body.api_key = apiKey;
+        fetch('/api/llm-configs/' + editingId, {
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast('配置已更新', 'success'); hideAddForm(); loadConfigs(); }
+            else { showToast(data.error || '更新失败', 'error'); }
+        });
+    } else {
+        fetch('/api/llm-configs', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name, base_url: baseUrl, api_key: apiKey, model: model })
+        }).then(function(r){return r.json();}).then(function(data){
+            if (data.ok) { showToast('配置已添加', 'success'); hideAddForm(); loadConfigs(); }
+            else { showToast(data.error || '添加失败', 'error'); }
+        });
+    }
+}
+
+function deleteConfig(id, name) {
+    if (!confirm('确认删除配置「' + name + '」？')) return;
+    fetch('/api/llm-configs/' + id, { method: 'DELETE' })
+        .then(function(r){return r.json();})
+        .then(function(data){
+            if (data.ok) { showToast('已删除', 'success'); loadConfigs(); }
+            else { showToast(data.error || '删除失败', 'error'); }
+        });
+}
+
+function testConfig() {
+    var baseUrl = document.getElementById('cfgBaseUrl').value.trim();
+    var apiKey = document.getElementById('cfgApiKey').value.trim();
+    var model = document.getElementById('cfgModel').value.trim();
+    if (!baseUrl || !model) { showToast('API地址和模型不能为空', 'error'); return; }
+    showToast('测试中...', '');
+    fetch('/api/llm-configs/test', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ base_url: baseUrl, api_key: apiKey, model: model })
+    }).then(function(r){return r.json();}).then(function(data){
+        if (data.ok) { showToast(data.message, 'success'); }
+        else { showToast(data.message || '测试失败', 'error'); }
+    });
+}
+
+function testConfigById(id) {
+    showToast('测试中...', '');
+    fetch('/api/llm-configs/test', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ config_id: id })
+    }).then(function(r){return r.json();}).then(function(data){
+        if (data.ok) { showToast(data.message, 'success'); }
+        else { showToast(data.message || '测试失败', 'error'); }
+    });
+}
+
+function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme');
+    if (current === 'light') {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('themeBtn').textContent = '🌙';
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.getElementById('themeBtn').textContent = '☀️';
+        localStorage.setItem('theme', 'light');
+    }
+}
+
+var savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('themeBtn').textContent = '☀️';
+}
+
+loadConfigs();
+</script>
+</body>
+</html>

@@ -167,7 +167,11 @@
 <body>
 <div class="container">
     <header>
-        <h1>🎬 字幕翻译器</h1>
+        <div style="display:flex; align-items:center; gap:20px;">
+            <h1>🎬 字幕翻译器</h1>
+            <a href="/" style="color:var(--text); font-size:14px; opacity:0.8; text-decoration:none;">翻译</a>
+            <a href="/settings" style="color:var(--accent); font-size:14px; text-decoration:none;">⚙️ LLM配置</a>
+        </div>
         <div class="header-right">
             <span class="version-badge" id="version">{{ version }}</span>
             <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
@@ -233,12 +237,9 @@
             </div>
         </div>
         <div class="form-row" id="llmRow" style="display:none;">
-            <div class="form-group" style="flex:2;">
-                <label>LLM 模型配置</label>
-                <select id="llmConfigSelect" onchange="onLlmConfigChange()"></select>
-            </div>
-            <div class="form-group" style="flex:0 0 auto; display:flex; align-items:flex-end;">
-                <button class="btn btn-secondary btn-sm" onclick="showLlmManager()">⚙️ 管理配置</button>
+            <div class="form-group">
+                <label>LLM 模型配置 <a href="/settings" style="font-size:12px;">前往配置页面 →</a></label>
+                <select id="llmConfigSelect"></select>
             </div>
         </div>
         <div class="btn-row">
