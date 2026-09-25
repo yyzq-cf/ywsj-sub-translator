@@ -765,6 +765,45 @@ def get_translate_api_presets():
     return jsonify(TRANSLATE_API_PRESETS)
 
 
+@app.route('/api/translate-api-configs/test', methods=['POST'])
+@login_required
+def test_translate_api():
+    data = request.get_json()
+    config_id = data.get('config_id', '')
+    if config_id:
+        for cfg in load_translate_api_configs():
+            if cfg['id'] == config_id:
+                engine = cfg.get('engine', '')
+                api_key = cfg.get('api_key', '')
+                secret_key = cfg.get('secret_key', '')
+                break
+        else:
+            return jsonify({'ok': False, 'message': '配置不存在'}), 404
+    else:
+        engine = data.get('engine', '').strip()
+        api_key = data.get('api_key', '').strip()
+        secret_key = data.get('secret_key', '').strip()
+
+    if not api_key or not secret_key:
+        return jsonify({'ok': False, 'message': '请填写完整的Key和密钥'})
+
+    try:
+        if engine == 'tencent':
+            from translator import translate_tencent
+            result = translate_tencent('Hello', source='en', target='zh', api_key=api_key, secret_key=secret_key)
+        elif engine == 'baidu':
+            from translator import translate_baidu
+            result = translate_baidu('Hello', source='en', target='zh', api_key=api_key, secret_key=secret_key)
+        elif engine == 'youdao':
+            from translator import translate_youdao
+            result = translate_youdao('Hello', source='auto', target='zh-CHS', api_key=api_key, secret_key=secret_key)
+        else:
+            return jsonify({'ok': False, 'message': '未知的翻译引擎'})
+        return jsonify({'ok': True, 'message': f'连接成功，翻译结果: {result}'})
+    except Exception as e:
+        return jsonify({'ok': False, 'message': str(e)[:200]})
+
+
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok'})

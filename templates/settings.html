@@ -175,6 +175,7 @@
         </div>
         <div class="btn-row">
             <button class="btn btn-secondary btn-sm" onclick="hideTapiAddForm()">取消</button>
+            <button class="btn btn-secondary btn-sm" onclick="testTapiConfig()">🔌 测试</button>
             <button class="btn btn-sm" onclick="saveTapiConfig()" id="tapiSaveBtn">💾 保存</button>
         </div>
     </div>
@@ -434,6 +435,7 @@ function loadTapiConfigs() {
                 '<div class="config-meta">引擎: ' + esc(c.engine) + ' · Key: ' + keyInfo + ' · Secret: ' + secretInfo + '</div>' +
                 '</div>' +
                 '<div class="config-actions">' +
+                '<button class="btn btn-secondary btn-sm" onclick="testTapiConfigById(\''+c.id+'\')">🔌测试</button>' +
                 '<button class="btn btn-secondary btn-sm" onclick="editTapiConfig(\''+c.id+'\')">✏️编辑</button>' +
                 '<button class="btn btn-secondary btn-sm" onclick="deleteTapiConfig(\''+c.id+'\',\''+esc(c.name)+'\')" style="color:var(--error);">🗑️删除</button>' +
                 '</div>';
@@ -493,6 +495,50 @@ function deleteTapiConfig(id, name) {
     fetch('/api/translate-api-configs/' + id, { method: 'DELETE' })
         .then(function(r){return r.json();})
         .then(function(data){ if (data.ok) { showToast('已删除', 'success'); loadTapiConfigs(); } });
+}
+
+function editTapiConfig(id) {
+    fetch('/api/translate-api-configs').then(function(r){return r.json();}).then(function(configs){
+        var cfg = configs.find(function(c){ return c.id === id; });
+        if (!cfg) return;
+        tapiEditingId = id;
+        document.getElementById('tapiFormTitle').textContent = '编辑翻译API';
+        document.getElementById('tapiPreset').value = '';
+        document.getElementById('tapiName').value = cfg.name || '';
+        document.getElementById('tapiKey').value = '';
+        document.getElementById('tapiSecret').value = '';
+        document.getElementById('tapiSaveBtn').textContent = '💾 更新';
+        document.getElementById('tapiAddForm').style.display = 'block';
+        document.getElementById('tapiName').focus();
+    });
+}
+
+function testTapiConfig() {
+    var preset = document.getElementById('tapiPreset').value;
+    if (!preset) { showToast('请先选择服务商', 'error'); return; }
+    var p = JSON.parse(preset);
+    var apiKey = document.getElementById('tapiKey').value.trim();
+    var secretKey = document.getElementById('tapiSecret').value.trim();
+    if (!apiKey || !secretKey) { showToast('请填写Key和密钥', 'error'); return; }
+    showToast('测试中...', '');
+    fetch('/api/translate-api-configs/test', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ engine: p.engine, api_key: apiKey, secret_key: secretKey })
+    }).then(function(r){return r.json();}).then(function(data){
+        if (data.ok) { showToast(data.message, 'success'); }
+        else { showToast(data.message || '测试失败', 'error'); }
+    });
+}
+
+function testTapiConfigById(id) {
+    showToast('测试中...', '');
+    fetch('/api/translate-api-configs/test', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ config_id: id })
+    }).then(function(r){return r.json();}).then(function(data){
+        if (data.ok) { showToast(data.message, 'success'); }
+        else { showToast(data.message || '测试失败', 'error'); }
+    });
 }
 
 loadPresets();
