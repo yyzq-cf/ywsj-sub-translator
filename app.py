@@ -4,6 +4,7 @@ import json
 import uuid
 import threading
 import logging
+from urllib.parse import quote
 from flask import Flask, request, jsonify, render_template, send_file, Response
 
 from subtitle_parser import parse_subtitle, rebuild
@@ -65,6 +66,11 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     texts = [e['text'] for e in entries]
     total = len(texts)
     task['total'] = total
+    # Store entries for editing
+    task['entries'] = entries
+    task['original_entries'] = [dict(e) for e in entries]
+    task['content'] = content
+    task['detected_fmt'] = detected_fmt
 
     engine_info = ENGINES.get(engine, ENGINES['google'])
     func = engine_info['func']
@@ -111,8 +117,12 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
 
         task['done'] = min(len(results), total)
         task['status'] = 'translating'
+        # Update entries progressively for live preview
+        for j in range(i, min(i + len(batch), total)):
+            if j < len(results):
+                entries[j]['text'] = results[j]
 
-    # Rebuild
+    # Final update
     for i, entry in enumerate(entries):
         entry['text'] = results[i] if i < len(results) else entry['text']
 
@@ -122,6 +132,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     task['errors'] = errors
     task['status'] = 'done'
     task['done'] = total
+    task['output_fmt'] = out_fmt
 
 
 @app.route('/api/translate', methods=['POST'])
@@ -186,12 +197,90 @@ def progress(task_id):
     if not task:
         return jsonify({'error': '任务不存在'}), 404
 
-    return jsonify({
+    resp = {
         'status': task['status'],
         'total': task['total'],
         'done': task['done'],
         'errors': task['errors'],
-    })
+    }
+    # Include entries for live preview when translating or done
+    if task['status'] in ('translating', 'done') and 'entries' in task:
+        resp['entries'] = task['entries']
+        resp['original_entries'] = task.get('original_entries', [])
+    return jsonify(resp)
+
+
+@app.route('/api/edit/<task_id>', methods=['POST'])
+def edit_entry(task_id):
+    """Edit a translated entry."""
+    task = tasks.get(task_id)
+    if not task:
+        return jsonify({'error': '任务不存在'}), 404
+
+    data = request.get_json()
+    index = data.get('index')
+    text = data.get('text')
+
+    if index is None or text is None:
+        return jsonify({'error': '缺少参数'}), 400
+
+    entries = task.get('entries', [])
+    if 0 <= index < len(entries):
+        entries[index]['text'] = text
+        # Rebuild result with edited text
+        out_fmt = task.get('output_fmt', task.get('fmt', 'srt'))
+        result_text = rebuild(entries, out_fmt, original_content=task.get('content', ''))
+        task['result'] = result_text
+        return jsonify({'ok': True})
+    else:
+        return jsonify({'error': '索引超出范围'}), 400
+
+
+@app.route('/api/retranslate/<task_id>', methods=['POST'])
+def retranslate_entry(task_id):
+    """Retranslate a single entry."""
+    task = tasks.get(task_id)
+    if not task:
+        return jsonify({'error': '任务不存在'}), 404
+
+    data = request.get_json()
+    index = data.get('index')
+    engine = data.get('engine', 'google')
+    source = data.get('source', 'auto')
+    target = data.get('target', 'zh-CN')
+    api_key = data.get('api_key', '')
+    base_url = data.get('base_url', '')
+
+    if index is None:
+        return jsonify({'error': '缺少索引'}), 400
+
+    entries = task.get('entries', [])
+    if not (0 <= index < len(entries)):
+        return jsonify({'error': '索引超出范围'}), 400
+
+    original_entries = task.get('original_entries', [])
+    original_text = original_entries[index]['text'] if index < len(original_entries) else entries[index]['text']
+
+    engine_info = ENGINES.get(engine, ENGINES['google'])
+    func = engine_info['func']
+
+    try:
+        if engine == 'libre':
+            translated = func(original_text, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
+        elif engine == 'deepl':
+            translated = func(original_text, source=source, target=target, api_key=api_key)
+        elif engine == 'mymemory':
+            translated = func(original_text, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
+        else:
+            translated = func(original_text, source=source, target=target, api_key=api_key)
+        entries[index]['text'] = translated
+        # Rebuild result
+        out_fmt = task.get('output_fmt', task.get('fmt', 'srt'))
+        result_text = rebuild(entries, out_fmt, original_content=task.get('content', ''))
+        task['result'] = result_text
+        return jsonify({'ok': True, 'text': translated})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/download/<task_id>')
@@ -206,11 +295,7 @@ def download(task_id):
     base_name = os.path.splitext(task['filename'])[0]
     out_filename = f'{base_name}.{task["target"]}.{task["fmt"]}'
 
-    # Clean up task after download
     result = task['result']
-    # Keep task for a bit so progress endpoint still works after download
-
-    from urllib.parse import quote
     encoded = quote(out_filename)
     ascii_name = encoded.replace('%', 'X')[:50]
     cd = 'attachment; filename="' + ascii_name + '"; filename*=UTF-8' + chr(39) + chr(39) + encoded

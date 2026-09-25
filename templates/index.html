@@ -15,6 +15,7 @@
             --accent-hover: #2563eb;
             --success: #22c55e;
             --error: #ef4444;
+            --edited: #f59e0b;
         }
         [data-theme="light"] {
             --bg: #f5f5f5;
@@ -33,7 +34,7 @@
             min-height: 100vh;
             transition: background 0.3s, color 0.3s;
         }
-        .container { max-width: 860px; margin: 0 auto; padding: 20px; }
+        .container { max-width: 960px; margin: 0 auto; padding: 20px; }
         header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 30px;
@@ -63,11 +64,12 @@
             padding: 12px; background: rgba(59,130,246,0.1); border-radius: 8px; margin-top: 12px;
         }
         .file-info.show { display: flex; }
-        select, input[type="text"], input[type="password"] {
+        select, input[type="text"], input[type="password"], textarea {
             background: var(--bg); border: 1px solid var(--border); color: var(--text);
             padding: 10px 12px; border-radius: 8px; width: 100%; font-size: 14px;
         }
-        select:focus, input:focus { outline: none; border-color: var(--accent); }
+        select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+        textarea { resize: vertical; min-height: 60px; font-family: inherit; }
         .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
         .form-group { flex: 1; }
         .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
@@ -78,28 +80,14 @@
         }
         .btn:hover { background: var(--accent-hover); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-secondary {
-            background: var(--bg); color: var(--text); border: 1px solid var(--border);
-        }
+        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
         .btn-row { display: flex; gap: 12px; margin-top: 8px; }
         .progress { display: none; margin-top: 16px; }
         .progress.show { display: block; }
-        .progress-bar {
-            height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%; background: var(--accent); width: 0%;
-            transition: width 0.3s;
-        }
+        .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
         .progress-text { color: var(--muted); font-size: 13px; margin-top: 8px; text-align: center; }
-        .preview-section { display: none; }
-        .preview-section.show { display: block; }
-        table {
-            width: 100%; border-collapse: collapse; font-size: 13px;
-        }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { color: var(--muted); font-weight: 600; }
-        td.text-col { max-width: 300px; word-break: break-word; }
         .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px 0; }
         .toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -111,6 +99,41 @@
         .toast.success { background: var(--success); color: white; }
         a { color: var(--accent); text-decoration: none; }
         .lang-count { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+        /* Editor table */
+        .editor-section { display: none; }
+        .editor-section.show { display: block; }
+        .editor-toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
+        }
+        .editor-toolbar .stats { color: var(--muted); font-size: 13px; }
+        .editor-table-wrap { overflow-x: auto; }
+        table.editor-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table.editor-table th, table.editor-table td {
+            padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        table.editor-table th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+        td.col-idx { width: 40px; color: var(--muted); text-align: center; }
+        td.col-time { width: 140px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+        td.col-original { max-width: 250px; word-break: break-word; }
+        td.col-translated { max-width: 280px; word-break: break-word; }
+        td.col-actions { width: 80px; text-align: center; }
+        .entry-original { color: var(--muted); }
+        .entry-translated { color: var(--text); }
+        .entry-translated.editing { padding: 0; }
+        .entry-translated textarea {
+            width: 100%; min-height: 40px; padding: 6px 8px; font-size: 13px;
+            border-color: var(--accent);
+        }
+        .entry-translated.edited { border-left: 3px solid var(--edited); padding-left: 6px; }
+        .entry-translated.pending { color: var(--muted); font-style: italic; }
+        .btn-edit { background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-retranslate { background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 4px; }
+        .btn-retranslate:hover { border-color: var(--accent); color: var(--accent); }
+        .badge-edited { background: var(--edited); color: #000; padding: 1px 5px; border-radius: 3px; font-size: 10px; margin-left: 4px; }
     </style>
 </head>
 <body>
@@ -124,7 +147,7 @@
     </header>
 
     <!-- Upload Card -->
-    <div class="card">
+    <div class="card" id="uploadCard">
         <div class="card-title">📤 第一步：上传字幕文件</div>
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
             <div class="icon">📁</div>
@@ -139,7 +162,7 @@
     </div>
 
     <!-- Settings Card -->
-    <div class="card">
+    <div class="card" id="settingsCard">
         <div class="card-title">⚙️ 第二步：选择翻译设置</div>
         <div class="form-row">
             <div class="form-group">
@@ -186,13 +209,30 @@
         <div class="progress-text" id="progressText">翻译中...</div>
     </div>
 
-    <!-- Preview -->
-    <div class="card preview-section" id="previewSection">
-        <div class="card-title">📋 预览（前10条）</div>
-        <table>
-            <thead><tr><th>#</th><th>时间</th><th>原文</th><th>译文</th></tr></thead>
-            <tbody id="previewBody"></tbody>
-        </table>
+    <!-- Editor Card -->
+    <div class="card editor-section" id="editorSection">
+        <div class="editor-toolbar">
+            <div>
+                <span class="card-title" style="margin-bottom:0;">📝 翻译结果（可编辑）</span>
+                <span class="stats" id="editorStats"></span>
+            </div>
+            <div class="btn-row" style="margin-top:0;">
+                <button class="btn btn-secondary btn-sm" onclick="scrollToTop()">⬆️ 顶部</button>
+                <button class="btn btn-sm" onclick="downloadResult()" id="downloadBtn">💾 下载字幕</button>
+            </div>
+        </div>
+        <div class="editor-table-wrap">
+            <table class="editor-table">
+                <thead><tr>
+                    <th class="col-idx">#</th>
+                    <th class="col-time">时间轴</th>
+                    <th class="col-original">原文</th>
+                    <th class="col-translated">译文（点击编辑）</th>
+                    <th class="col-actions">操作</th>
+                </tr></thead>
+                <tbody id="editorBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <div class="footer">
@@ -204,10 +244,13 @@
 <script>
 (function() {
     var selectedFile = null;
+    var currentTaskId = null;
+    var pollTimer = null;
+    var editorEntries = [];
+    var editedFlags = {};
 
     // ===== Language definitions per engine =====
 
-    // Google Translate: 104 languages
     var GOOGLE_LANGS = [
         ['auto','自动检测'],['af','南非荷兰语'],['sq','阿尔巴尼亚语'],['ar','阿拉伯语'],['am','阿姆哈拉语'],
         ['hy','亚美尼亚语'],['az','阿塞拜疆语'],['eu','巴斯克语'],['be','白俄罗斯语'],['bn','孟加拉语'],
@@ -232,8 +275,6 @@
         ['uz','乌兹别克语'],['vi','越南语'],['cy','威尔士语'],['xh','科萨语'],['yi','意第绪语'],
         ['yo','约鲁巴语'],['zu','祖鲁语']
     ];
-
-    // DeepL: 30 languages (target lang codes uppercase)
     var DEEPL_LANGS = [
         ['auto','自动检测'],['bg','保加利亚语'],['cs','捷克语'],['da','丹麦语'],['de','德语'],
         ['el','希腊语'],['en','英语'],['es','西班牙语'],['et','爱沙尼亚语'],['fi','芬兰语'],
@@ -242,8 +283,6 @@
         ['pl','波兰语'],['pt','葡萄牙语'],['ro','罗马尼亚语'],['ru','俄语'],['sk','斯洛伐克语'],
         ['sl','斯洛文尼亚语'],['sv','瑞典语'],['tr','土耳其语'],['uk','乌克兰语'],['zh','中文']
     ];
-
-    // LibreTranslate: 25 languages
     var LIBRE_LANGS = [
         ['auto','自动检测'],['ar','阿拉伯语'],['az','阿塞拜疆语'],['zh','中文'],['cs','捷克语'],
         ['da','丹麦语'],['nl','荷兰语'],['en','英语'],['fi','芬兰语'],['fr','法语'],
@@ -252,8 +291,6 @@
         ['no','挪威语'],['pl','波兰语'],['pt','葡萄牙语'],['ru','俄语'],['es','西班牙语'],
         ['sv','瑞典语'],['tr','土耳其语'],['uk','乌克兰语'],['vi','越南语']
     ];
-
-    // MyMemory: 80+ languages (same codes as Google subset)
     var MYMEMORY_LANGS = [
         ['auto','自动检测'],['ar','阿拉伯语'],['bg','保加利亚语'],['bn','孟加拉语'],['ca','加泰罗尼亚语'],
         ['zh-CN','中文(简体)'],['zh-TW','中文(繁体)'],['hr','克罗地亚语'],['cs','捷克语'],['da','丹麦语'],
@@ -269,26 +306,16 @@
         ['tl','菲律宾语'],['ta','泰米尔语'],['te','泰卢固语'],['th','泰语'],['tr','土耳其语'],
         ['uk','乌克兰语'],['ur','乌尔都语'],['uz','乌兹别克语'],['vi','越南语'],['cy','威尔士语']
     ];
-
-    var ENGINE_LANGS = {
-        google: GOOGLE_LANGS,
-        deepl: DEEPL_LANGS,
-        libre: LIBRE_LANGS,
-        mymemory: MYMEMORY_LANGS
-    };
-
-    // ===== Build language dropdowns =====
+    var ENGINE_LANGS = { google: GOOGLE_LANGS, deepl: DEEPL_LANGS, libre: LIBRE_LANGS, mymemory: MYMEMORY_LANGS };
 
     function buildLangSelect(selectId, langs, includeAuto, defaultVal) {
         var sel = document.getElementById(selectId);
         sel.innerHTML = '';
         for (var i = 0; i < langs.length; i++) {
-            var code = langs[i][0];
-            var name = langs[i][1];
+            var code = langs[i][0], name = langs[i][1];
             if (!includeAuto && code === 'auto') continue;
             var opt = document.createElement('option');
-            opt.value = code;
-            opt.textContent = name;
+            opt.value = code; opt.textContent = name;
             if (code === defaultVal) opt.selected = true;
             sel.appendChild(opt);
         }
@@ -297,133 +324,76 @@
     window.onEngineChange = function() {
         var engine = document.getElementById('engine').value;
         var langs = ENGINE_LANGS[engine] || GOOGLE_LANGS;
-
-        // Preserve current selections if possible
         var curSource = document.getElementById('source').value || 'auto';
         var curTarget = document.getElementById('target').value || 'zh-CN';
-
-        // DeepL default: zh, others default: zh-CN
         var defaultTarget = (engine === 'deepl') ? 'zh' : 'zh-CN';
-
         buildLangSelect('source', langs, true, curSource);
         buildLangSelect('target', langs, false, curTarget);
-
-        // If current target not in list, use default
         var targetSel = document.getElementById('target');
         var found = false;
-        for (var i = 0; i < targetSel.options.length; i++) {
-            if (targetSel.options[i].value === curTarget) { found = true; break; }
-        }
+        for (var i = 0; i < targetSel.options.length; i++) { if (targetSel.options[i].value === curTarget) { found = true; break; } }
         if (!found) targetSel.value = defaultTarget;
-
-        // Show/hide API key fields
-        var keyRow = document.getElementById('apiKeyRow');
-        var urlRow = document.getElementById('baseUrlRow');
-        keyRow.style.display = 'none';
-        urlRow.style.display = 'none';
-        if (engine === 'deepl') keyRow.style.display = 'flex';
-        if (engine === 'libre') { keyRow.style.display = 'flex'; urlRow.style.display = 'flex'; }
-        if (engine === 'mymemory') keyRow.style.display = 'flex';
-
-        // Update language count
-        var count = langs.length - 1; // minus 'auto'
+        document.getElementById('apiKeyRow').style.display = 'none';
+        document.getElementById('baseUrlRow').style.display = 'none';
+        if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
+        if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
+        if (engine === 'mymemory') document.getElementById('apiKeyRow').style.display = 'flex';
+        var count = langs.length - 1;
         document.getElementById('langCount').textContent = '支持 ' + count + ' 种语言';
     };
 
     // ===== File handling =====
-
     document.getElementById('fileInput').addEventListener('change', function(e) {
         if (e.target.files.length) setFile(e.target.files[0]);
     });
-
     var dz = document.getElementById('dropZone');
     dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('dragover'); });
     dz.addEventListener('dragleave', function() { dz.classList.remove('dragover'); });
     dz.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dz.classList.remove('dragover');
-        if (e.dataTransfer.files.length) {
-            setFile(e.dataTransfer.files[0]);
-            document.getElementById('fileInput').files = e.dataTransfer.files;
-        }
+        e.preventDefault(); dz.classList.remove('dragover');
+        if (e.dataTransfer.files.length) { setFile(e.dataTransfer.files[0]); document.getElementById('fileInput').files = e.dataTransfer.files; }
     });
-
     function setFile(file) {
         selectedFile = file;
-        var info = document.getElementById('fileInfo');
         document.getElementById('fileName').textContent = file.name;
         document.getElementById('fileSize').textContent = '(' + formatSize(file.size) + ')';
-        info.classList.add('show');
+        document.getElementById('fileInfo').classList.add('show');
     }
     window.setFile = setFile;
-
-    function formatSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
-    }
+    function formatSize(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
 
     // ===== Toast & progress =====
-
     function showToast(msg, type) {
         var t = document.getElementById('toast');
-        t.textContent = msg;
-        t.className = 'toast show ' + (type || '');
+        t.textContent = msg; t.className = 'toast show ' + (type||'');
         setTimeout(function() { t.classList.remove('show'); }, 3000);
     }
     window.showToast = showToast;
-
-    function showProgress(msg) {
-        var p = document.getElementById('progress');
-        p.classList.add('show');
-        document.getElementById('progressText').textContent = msg;
-    }
-
-    function hideProgress() {
-        document.getElementById('progress').classList.remove('show');
-    }
+    function showProgress(msg) { document.getElementById('progress').classList.add('show'); document.getElementById('progressText').textContent = msg; }
+    function hideProgress() { document.getElementById('progress').classList.remove('show'); }
 
     // ===== Preview =====
-
     window.previewFile = function() {
         if (!selectedFile) { showToast('请先选择文件', 'error'); return; }
-        var formData = new FormData();
-        formData.append('file', selectedFile);
+        var formData = new FormData(); formData.append('file', selectedFile);
         showProgress('解析中...');
         fetch('/api/preview', { method: 'POST', body: formData })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 hideProgress();
                 if (data.error) { showToast(data.error, 'error'); return; }
-                var body = document.getElementById('previewBody');
-                body.innerHTML = '';
-                data.preview.forEach(function(e) {
-                    var tr = document.createElement('tr');
-                    tr.innerHTML = '<td>' + esc(e.index) + '</td>' +
-                        '<td>' + esc(e.start) + '<br>\u2192 ' + esc(e.end) + '</td>' +
-                        '<td class="text-col">' + esc(e.text) + '</td>' +
-                        '<td class="text-col" style="color:var(--muted)">\u2014</td>';
-                    body.appendChild(tr);
-                });
-                document.getElementById('previewSection').classList.add('show');
-                showToast('\u5171 ' + data.total + ' \u6761\u5b57\u5e55', 'success');
+                showToast('共 ' + data.total + ' 条字幕，格式: ' + data.format, 'success');
             })
-            .catch(function(err) {
-                hideProgress();
-                showToast('\u9884\u89c8\u5931\u8d25: ' + err.message, 'error');
-            });
+            .catch(function(err) { hideProgress(); showToast('预览失败: ' + err.message, 'error'); });
     };
 
     // ===== Translate with progress polling =====
-
-    var pollTimer = null;
-
     window.translateFile = function() {
-        if (!selectedFile) { showToast('\u8bf7\u5148\u9009\u62e9\u6587\u4ef6', 'error'); return; }
+        if (!selectedFile) { showToast('请先选择文件', 'error'); return; }
         var btn = document.getElementById('translateBtn');
-        btn.disabled = true;
-        btn.textContent = '\u23f3 \u7ffb\u8bd1\u4e2d...';
-        showProgress('\u63d0\u4ea4\u7ffb\u8bd1\u4efb\u52a1...');
+        btn.disabled = true; btn.textContent = '⏳ 翻译中...';
+        document.getElementById('editorSection').classList.remove('show');
+        showProgress('提交翻译任务...');
 
         var formData = new FormData();
         formData.append('file', selectedFile);
@@ -436,13 +406,12 @@
         fetch('/api/translate', { method: 'POST', body: formData })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data.error) { throw new Error(data.error); }
+                if (data.error) throw new Error(data.error);
+                currentTaskId = data.task_id;
                 startPolling(data.task_id, data.total);
             })
             .catch(function(err) {
-                hideProgress();
-                btn.disabled = false;
-                btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
+                hideProgress(); btn.disabled = false; btn.textContent = '🚀 开始翻译';
                 showToast(err.message, 'error');
             });
     };
@@ -451,103 +420,204 @@
         var btn = document.getElementById('translateBtn');
         var fill = document.getElementById('progressFill');
         var text = document.getElementById('progressText');
+        var firstRender = true;
 
         pollTimer = setInterval(function() {
             fetch('/api/progress/' + taskId)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    if (data.error) {
-                        clearInterval(pollTimer);
-                        hideProgress();
-                        btn.disabled = false;
-                        btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
-                        showToast(data.error, 'error');
-                        return;
-                    }
+                    if (data.error) { clearInterval(pollTimer); hideProgress(); btn.disabled = false; btn.textContent = '🚀 开始翻译'; showToast(data.error, 'error'); return; }
                     var done = data.done || 0;
                     var tot = data.total || total;
                     var pct = tot > 0 ? Math.round(done / tot * 100) : 0;
                     fill.style.width = pct + '%';
-                    text.textContent = '\u7ffb\u8bd1\u8fdb\u5ea6 ' + done + '/' + tot + ' (' + pct + '%)';
+                    text.textContent = '翻译进度 ' + done + '/' + tot + ' (' + pct + '%)';
+
+                    // Live render entries
+                    if (data.entries) {
+                        editorEntries = data.entries;
+                        renderEditor(data.entries, data.original_entries || [], firstRender);
+                        if (firstRender) {
+                            document.getElementById('editorSection').classList.add('show');
+                            firstRender = false;
+                        }
+                    }
 
                     if (data.status === 'done') {
                         clearInterval(pollTimer);
                         fill.style.width = '100%';
-                        text.textContent = '\u7ffb\u8bd1\u5b8c\u6210\uff01\u6b63\u5728\u4e0b\u8f7d...';
-                        // Trigger download
-                        fetch('/api/download/' + taskId)
-                            .then(function(r) {
-                                if (!r.ok) { throw new Error('\u4e0b\u8f7d\u5931\u8d25'); }
-                                var disposition = r.headers.get('Content-Disposition') || '';
-                                var m = disposition.match(/filename="(.+?)"/);
-                                var filename = m ? m[1] : 'translated.srt';
-                                return r.blob().then(function(blob) {
-                                    var url = URL.createObjectURL(blob);
-                                    var a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = filename;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    URL.revokeObjectURL(url);
-                                });
-                            })
-                            .then(function() {
-                                setTimeout(function() { hideProgress(); }, 1500);
-                                btn.disabled = false;
-                                btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
-                                var msg = '\u7ffb\u8bd1\u5b8c\u6210\uff0c\u5df2\u5f00\u59cb\u4e0b\u8f7d';
-                                if (data.errors && data.errors.length > 0) {
-                                    msg += '\uff08' + data.errors.length + '\u6761\u9519\u8bef\uff09';
-                                }
-                                showToast(msg, 'success');
-                            })
-                            .catch(function(err) {
-                                hideProgress();
-                                btn.disabled = false;
-                                btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
-                                showToast(err.message, 'error');
-                            });
+                        text.textContent = '翻译完成！可在下方编辑后下载';
+                        btn.disabled = false; btn.textContent = '🚀 重新翻译';
+                        var msg = '翻译完成，共 ' + tot + ' 条';
+                        if (data.errors && data.errors.length > 0) msg += '（' + data.errors.length + '条错误）';
+                        msg += '，可编辑后下载';
+                        showToast(msg, 'success');
                     }
                 })
-                .catch(function(err) {
-                    clearInterval(pollTimer);
-                    hideProgress();
-                    btn.disabled = false;
-                    btn.textContent = '\ud83d\ude80 \u5f00\u59cb\u7ffb\u8bd1';
-                    showToast('\u8f6e\u8be2\u5931\u8d25: ' + err.message, 'error');
-                });
+                .catch(function(err) { clearInterval(pollTimer); hideProgress(); btn.disabled = false; btn.textContent = '🚀 开始翻译'; showToast('轮询失败: ' + err.message, 'error'); });
         }, 800);
     }
 
-    function esc(s) {
-        var d = document.createElement('div');
-        d.textContent = s || '';
-        return d.innerHTML;
+    // ===== Editor =====
+    function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    function renderEditor(entries, originals, isFirst) {
+        var body = document.getElementById('editorBody');
+        if (isFirst) {
+            body.innerHTML = '';
+            for (var i = 0; i < entries.length; i++) {
+                var tr = document.createElement('tr');
+                tr.id = 'row-' + i;
+                var origText = originals[i] ? originals[i].text : '';
+                var isEdited = editedFlags[i];
+                var isPending = entries[i].text === origText && entries[i].text !== '';
+
+                tr.innerHTML = '<td class="col-idx">' + (i+1) + '</td>' +
+                    '<td class="col-time">' + esc(entries[i].start) + '<br>→ ' + esc(entries[i].end) + '</td>' +
+                    '<td class="col-original entry-original">' + esc(origText) + '</td>' +
+                    '<td class="col-translated entry-translated' + (isEdited ? ' edited' : '') + '" id="trans-' + i + '">' +
+                        esc(entries[i].text) +
+                        (isEdited ? ' <span class="badge-edited">已改</span>' : '') +
+                    '</td>' +
+                    '<td class="col-actions">' +
+                        '<button class="btn-edit" onclick="editEntry(' + i + ')">✏️</button>' +
+                        '<button class="btn-retranslate" onclick="retranslateEntry(' + i + ')" title="重新翻译">🔄</button>' +
+                    '</td>';
+                body.appendChild(tr);
+            }
+            updateStats(entries.length);
+        } else {
+            // Update existing rows without full re-render
+            for (var j = 0; j < entries.length; j++) {
+                var cell = document.getElementById('trans-' + j);
+                if (cell && !cell.querySelector('textarea')) {
+                    var isEd = editedFlags[j];
+                    var origText2 = originals[j] ? originals[j].text : '';
+                    // Only update if not being edited
+                    cell.className = 'col-translated entry-translated' + (isEd ? ' edited' : '');
+                    cell.innerHTML = esc(entries[j].text) + (isEd ? ' <span class="badge-edited">已改</span>' : '');
+                }
+            }
+        }
     }
 
-    // ===== Theme toggle =====
+    function updateStats(total) {
+        var editedCount = Object.keys(editedFlags).length;
+        var stats = document.getElementById('editorStats');
+        stats.textContent = '共 ' + total + ' 条' + (editedCount > 0 ? '，已修改 ' + editedCount + ' 条' : '');
+    }
 
-    window.toggleTheme = function() {
-        var current = document.documentElement.getAttribute('data-theme');
-        if (current === 'light') {
-            document.documentElement.removeAttribute('data-theme');
-            document.getElementById('themeBtn').textContent = '\ud83c\udf19';
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.setAttribute('data-theme', 'light');
-            document.getElementById('themeBtn').textContent = '\u2600\ufe0f';
-            localStorage.setItem('theme', 'light');
-        }
+    window.editEntry = function(index) {
+        var cell = document.getElementById('trans-' + index);
+        if (!cell || cell.querySelector('textarea')) return;
+        var currentText = editorEntries[index] ? editorEntries[index].text : '';
+        cell.className = 'col-translated entry-translated editing';
+        cell.innerHTML = '<textarea id="editarea-' + index + '" rows="2">' + esc(currentText) + '</textarea>';
+        var ta = document.getElementById('editarea-' + index);
+        ta.focus();
+        ta.addEventListener('blur', function() { saveEdit(index); });
+        ta.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ta.blur(); }
+            if (e.key === 'Escape') { ta.value = currentText; ta.blur(); }
+        });
     };
 
-    var savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
-        document.getElementById('themeBtn').textContent = '\u2600\ufe0f';
+    function saveEdit(index) {
+        var ta = document.getElementById('editarea-' + index);
+        if (!ta) return;
+        var newText = ta.value;
+        var cell = document.getElementById('trans-' + index);
+
+        fetch('/api/edit/' + currentTaskId, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ index: index, text: newText })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    editorEntries[index].text = newText;
+                    editedFlags[index] = true;
+                    cell.className = 'col-translated entry-translated edited';
+                    cell.innerHTML = esc(newText) + ' <span class="badge-edited">已改</span>';
+                    updateStats(editorEntries.length);
+                    showToast('第' + (index+1) + '条已更新', 'success');
+                } else { showToast(data.error || '保存失败', 'error'); }
+            })
+            .catch(function(err) { showToast('保存失败: ' + err.message, 'error'); });
     }
 
-    // Initial language list
+    window.retranslateEntry = function(index) {
+        var cell = document.getElementById('trans-' + index);
+        if (!cell) return;
+        cell.innerHTML = '<span style="color:var(--muted)">重新翻译中...</span>';
+
+        fetch('/api/retranslate/' + currentTaskId, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                index: index,
+                engine: document.getElementById('engine').value,
+                source: document.getElementById('source').value,
+                target: document.getElementById('target').value,
+                api_key: document.getElementById('apiKey').value,
+                base_url: document.getElementById('baseUrl').value
+            })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    editorEntries[index].text = data.text;
+                    editedFlags[index] = true;
+                    cell.className = 'col-translated entry-translated edited';
+                    cell.innerHTML = esc(data.text) + ' <span class="badge-edited">已改</span>';
+                    updateStats(editorEntries.length);
+                    showToast('第' + (index+1) + '条已重新翻译', 'success');
+                } else {
+                    cell.innerHTML = esc(editorEntries[index].text);
+                    showToast(data.error || '重新翻译失败', 'error');
+                }
+            })
+            .catch(function(err) {
+                cell.innerHTML = esc(editorEntries[index].text);
+                showToast('重新翻译失败: ' + err.message, 'error');
+            });
+    }
+
+    window.downloadResult = function() {
+        if (!currentTaskId) { showToast('没有可下载的结果', 'error'); return; }
+        var btn = document.getElementById('downloadBtn');
+        btn.textContent = '⬇️ 下载中...'; btn.disabled = true;
+        fetch('/api/download/' + currentTaskId)
+            .then(function(r) {
+                if (!r.ok) throw new Error('下载失败');
+                var disposition = r.headers.get('Content-Disposition') || '';
+                var m = disposition.match(/filename\*=UTF-8''(.+)/);
+                var filename = 'translated.srt';
+                if (m) { filename = decodeURIComponent(m[1]); }
+                return r.blob().then(function(blob) {
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url; a.download = filename;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            })
+            .then(function() { btn.textContent = '💾 下载字幕'; btn.disabled = false; showToast('下载成功', 'success'); })
+            .catch(function(err) { btn.textContent = '💾 下载字幕'; btn.disabled = false; showToast(err.message, 'error'); });
+    };
+
+    window.scrollToTop = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+    // ===== Theme =====
+    window.toggleTheme = function() {
+        var current = document.documentElement.getAttribute('data-theme');
+        if (current === 'light') { document.documentElement.removeAttribute('data-theme'); document.getElementById('themeBtn').textContent = '🌙'; localStorage.setItem('theme', 'dark'); }
+        else { document.documentElement.setAttribute('data-theme', 'light'); document.getElementById('themeBtn').textContent = '☀️'; localStorage.setItem('theme', 'light'); }
+    };
+    var savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') { document.documentElement.setAttribute('data-theme', 'light'); document.getElementById('themeBtn').textContent = '☀️'; }
+
     onEngineChange();
 })();
 </script>
