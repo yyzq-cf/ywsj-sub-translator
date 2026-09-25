@@ -254,6 +254,14 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         if i < len(results) and results[i]:
             entry['text'] = results[i]
 
+    out_fmt = detected_fmt if output_format == 'auto' else output_format
+    result_text = rebuild(entries, out_fmt, original_content=content)
+    task['result'] = result_text
+    task['errors'] = errors
+    task['status'] = 'done'
+    task['done'] = total
+    task['output_fmt'] = out_fmt
+
 @app.route('/api/translate', methods=['POST'])
 @login_required
 def start_translate():
