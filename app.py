@@ -162,7 +162,7 @@ def preview():
     })
 
 
-def run_translation_task(task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt):
+def run_translation_task(task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt, model='gpt-4o-mini'):
     task = tasks[task_id]
     texts = [e['text'] for e in entries]
     total = len(texts)
@@ -198,6 +198,8 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
             return func(text, source=source, target=target, api_key=api_key)
         elif engine == 'mymemory':
             return func(text, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
+        elif engine == 'llm':
+            return func(text, source=source, target=target, api_key=api_key, base_url=base_url, model=model)
         else:
             return func(text, source=source, target=target, api_key=api_key)
 
@@ -283,7 +285,13 @@ def start_translate():
     target = request.form.get('target', 'zh-CN')
     api_key = request.form.get('api_key', '')
     base_url = request.form.get('base_url', '')
+    model = request.form.get('model', 'gpt-4o-mini')
     output_format = request.form.get('format', 'auto')
+
+    # LLM engine uses its own base_url and api_key
+    if engine == 'llm':
+        api_key = request.form.get('llm_api_key', '')
+        base_url = request.form.get('llm_base_url', '')
 
     try:
         entries, detected_fmt = parse_subtitle(filename, content)
@@ -299,7 +307,7 @@ def start_translate():
         'target': target, 'fmt': detected_fmt if output_format == 'auto' else output_format,
     }
     t = threading.Thread(target=run_translation_task, args=(
-        task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt
+        task_id, entries, content, engine, source, target, api_key, base_url, output_format, detected_fmt, model
     ))
     t.daemon = True
     t.start()
@@ -355,6 +363,7 @@ def retranslate_entry(task_id):
     target = data.get('target', 'zh-CN')
     api_key = data.get('api_key', '')
     base_url = data.get('base_url', '')
+    model = data.get('model', 'gpt-4o-mini')
     if index is None:
         return jsonify({'error': '缺少索引'}), 400
     entries = task.get('entries', [])
@@ -371,6 +380,8 @@ def retranslate_entry(task_id):
             translated = func(original_text, source=source, target=target, api_key=api_key)
         elif engine == 'mymemory':
             translated = func(original_text, source=source if source != 'auto' else 'en', target=target, api_key=api_key)
+        elif engine == 'llm':
+            translated = func(original_text, source=source, target=target, api_key=api_key, base_url=base_url, model=model)
         else:
             translated = func(original_text, source=source, target=target, api_key=api_key)
         entries[index]['text'] = translated

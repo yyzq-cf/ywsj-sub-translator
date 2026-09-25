@@ -91,11 +91,46 @@ def translate_mymemory(text, source='en', target='zh-CN', api_key=''):
     return resp.json()['responseData']['translatedText']
 
 
+def translate_llm(text, source='auto', target='zh-CN', api_key='', base_url='', model='gpt-4o-mini'):
+    """Use LLM via OpenAI-compatible API for translation."""
+    url = base_url.rstrip('/') + '/v1/chat/completions'
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
+
+    # Build language names for the prompt
+    lang_names = {
+        'zh-CN': '简体中文', 'zh-TW': '繁體中文', 'en': 'English', 'ja': '日本語',
+        'ko': '한국어', 'fr': 'Français', 'de': 'Deutsch', 'es': 'Español',
+        'ru': 'Русский', 'it': 'Italiano', 'pt': 'Português', 'vi': 'Tiếng Việt',
+        'th': 'ภาษาไทย', 'ar': 'العربية', 'hi': 'हिन्दी', 'tr': 'Türkçe',
+        'nl': 'Nederlands', 'pl': 'Polski', 'id': 'Indonesia', 'zh': '中文',
+    }
+    target_name = lang_names.get(target, target)
+    source_name = lang_names.get(source, 'auto-detected') if source != 'auto' else 'auto-detected'
+
+    payload = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': f'You are a professional subtitle translator. Translate the following subtitle text from {source_name} to {target_name}. Only output the translation, nothing else. Preserve any formatting, line breaks, and special characters. Do not add explanations.'},
+            {'role': 'user', 'content': text},
+        ],
+        'temperature': 0.3,
+    }
+
+    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    return data['choices'][0]['message']['content'].strip()
+
+
 ENGINES = {
     'google': {'func': translate_google, 'label': 'Google翻译', 'needs_key': False, 'default_target': 'zh-CN'},
     'deepl': {'func': translate_deepl, 'label': 'DeepL', 'needs_key': True, 'default_target': 'ZH'},
     'libre': {'func': translate_libre, 'label': 'LibreTranslate', 'needs_key': False, 'default_target': 'zh'},
     'mymemory': {'func': translate_mymemory, 'label': 'MyMemory', 'needs_key': False, 'default_target': 'zh-CN'},
+    'llm': {'func': translate_llm, 'label': 'LLM大模型', 'needs_key': True, 'default_target': 'zh-CN'},
 }
 
 

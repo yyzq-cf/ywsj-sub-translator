@@ -232,6 +232,22 @@
                 <input type="text" id="baseUrl" placeholder="http://localhost:5001" value="http://localhost:5001">
             </div>
         </div>
+        <div class="form-row" id="llmRow" style="display:none;">
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="text" id="llmBaseUrl" placeholder="https://api.openai.com" value="https://api.openai.com">
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="llmApiKey" placeholder="sk-...">
+            </div>
+        </div>
+        <div class="form-row" id="llmModelRow" style="display:none;">
+            <div class="form-group">
+                <label>模型名称</label>
+                <input type="text" id="llmModel" placeholder="gpt-4o-mini" value="gpt-4o-mini">
+            </div>
+        </div>
         <div class="btn-row">
             <button class="btn btn-secondary" onclick="previewFile()">👁️ 预览前10条</button>
             <button class="btn" onclick="translateFile()" id="translateBtn">🚀 开始翻译</button>
@@ -415,9 +431,12 @@
         if (!found) targetSel.value = defaultTarget;
         document.getElementById('apiKeyRow').style.display = 'none';
         document.getElementById('baseUrlRow').style.display = 'none';
+        document.getElementById('llmRow').style.display = 'none';
+        document.getElementById('llmModelRow').style.display = 'none';
         if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
         if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
         if (engine === 'mymemory') document.getElementById('apiKeyRow').style.display = 'flex';
+        if (engine === 'llm') { document.getElementById('llmRow').style.display = 'flex'; document.getElementById('llmModelRow').style.display = 'flex'; }
         var count = langs.length - 1;
         document.getElementById('langCount').textContent = '支持 ' + count + ' 种语言';
     };
@@ -493,6 +512,9 @@
         formData.append('target', document.getElementById('target').value);
         formData.append('api_key', document.getElementById('apiKey').value);
         formData.append('base_url', document.getElementById('baseUrl').value);
+        formData.append('model', document.getElementById('llmModel').value);
+        formData.append('llm_base_url', document.getElementById('llmBaseUrl').value);
+        formData.append('llm_api_key', document.getElementById('llmApiKey').value);
 
         fetch('/api/translate', { method: 'POST', body: formData })
             .then(function(r) { return r.json(); })
@@ -652,7 +674,8 @@
                 source: document.getElementById('source').value,
                 target: document.getElementById('target').value,
                 api_key: document.getElementById('apiKey').value,
-                base_url: document.getElementById('baseUrl').value
+                base_url: document.getElementById('baseUrl').value,
+                model: document.getElementById('llmModel').value
             })
         })
             .then(function(r) { return r.json(); })
