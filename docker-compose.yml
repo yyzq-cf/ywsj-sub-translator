@@ -4,6 +4,8 @@ services:
     container_name: sub-translator
     ports:
       - "5200:5200"
+    volumes:
+      - ./data:/data
     environment:
       - APP_VERSION=${APP_VERSION:-dev}
     restart: unless-stopped
