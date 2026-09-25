@@ -210,10 +210,13 @@ def download(task_id):
     result = task['result']
     # Keep task for a bit so progress endpoint still works after download
 
+    from urllib.parse import quote
+    encoded = quote(out_filename)
+    cd = "attachment; filename="" + encoded + ""; filename*=UTF-8''" + encoded
     return Response(
         result,
         mimetype='application/octet-stream',
-        headers={'Content-Disposition': f'attachment; filename="{out_filename}"'}
+        headers={'Content-Disposition': cd}
     )
 
 
