@@ -539,7 +539,32 @@ def edit_entry(task_id):
     if 0 <= index < len(entries):
         entries[index]['text'] = text
         out_fmt = task.get('output_fmt', task.get('fmt', 'srt'))
-        task['result'] = rebuild(entries, out_fmt, original_content=task.get('content', ''))
+        orig_content = task.get('content', '')
+        orig_entries = task.get('original_entries', [])
+        task['result'] = rebuild(entries, out_fmt, original_content=orig_content)
+        return jsonify({'ok': True})
+    return jsonify({'error': '索引超出范围'}), 400
+
+
+@app.route('/api/edit-original/<task_id>', methods=['POST'])
+@login_required
+def edit_original_entry(task_id):
+    """Edit the original (source) text of a subtitle entry."""
+    task = tasks.get(task_id)
+    if not task:
+        return jsonify({'error': '任务不存在'}), 404
+    data = request.get_json()
+    index = data.get('index')
+    text = data.get('text')
+    if index is None or text is None:
+        return jsonify({'error': '缺少参数'}), 400
+    entries = task.get('entries', [])
+    original_entries = task.get('original_entries', [])
+    if 0 <= index < len(original_entries):
+        original_entries[index]['text'] = text
+        out_fmt = task.get('output_fmt', task.get('fmt', 'srt'))
+        orig_content = task.get('content', '')
+        task['result'] = rebuild(entries, out_fmt, original_content=orig_content)
         return jsonify({'ok': True})
     return jsonify({'error': '索引超出范围'}), 400
 

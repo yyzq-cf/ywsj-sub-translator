@@ -139,6 +139,7 @@
             border-color: var(--accent);
         }
         .entry-translated.edited { border-left: 3px solid var(--edited); padding-left: 6px; }
+        .entry-original.edited { border-left: 3px solid var(--edited); padding-left: 6px; color: var(--text); }
         .entry-translated.pending { color: var(--muted); font-style: italic; }
         .btn-edit { background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
         .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
@@ -394,6 +395,7 @@
     var pollTimer = null;
     var editorEntries = [];
     var editedFlags = {};
+    var editorOriginals = [];
 
     // ===== Language definitions per engine =====
 
@@ -698,13 +700,13 @@
 
                 tr.innerHTML = '<td class="col-idx">' + (i+1) + '</td>' +
                     '<td class="col-time">' + esc(entries[i].start) + '<br>→ ' + esc(entries[i].end) + '</td>' +
-                    '<td class="col-original entry-original">' + esc(origText) + '</td>' +
-                    '<td class="col-translated entry-translated' + (isEdited ? ' edited' : '') + '" id="trans-' + i + '">' +
+                    '<td class="col-original entry-original" id="orig-' + i + '" onclick="editOriginal(' + i + ')" style="cursor:text;" title="点击编辑">' + esc(origText) + '</td>' +
+                    '<td class="col-translated entry-translated' + (isEdited ? ' edited' : '') + '" id="trans-' + i + '" onclick="editEntry(' + i + ')" style="cursor:text;" title="点击编辑">' +
                         esc(entries[i].text) +
                         (isEdited ? ' <span class="badge-edited">已改</span>' : '') +
                     '</td>' +
                     '<td class="col-actions">' +
-                        '<button class="btn-edit" onclick="editEntry(' + i + ')">✏️</button>' +
+                        '<button class="btn-edit" onclick="editEntry(' + i + ')">✏️译</button>' +
                         '<button class="btn-retranslate" onclick="retranslateEntry(' + i + ')" title="重新翻译">🔄</button>' +
                     '</td>';
                 body.appendChild(tr);
@@ -723,6 +725,43 @@
                 }
             }
         }
+    }
+
+
+    window.editOriginal = function(index) {
+        var cell = document.getElementById('orig-' + index);
+        if (!cell || cell.querySelector('textarea')) return;
+        var currentText = editorOriginals[index] ? editorOriginals[index].text : '';
+        cell.className = 'col-original entry-original editing';
+        cell.innerHTML = '<textarea id="editarea-orig-' + index + '" rows="2" style="font-size:13px;">' + esc(currentText) + '</textarea>';
+        var ta = document.getElementById('editarea-orig-' + index);
+        ta.focus();
+        ta.addEventListener('blur', function() { saveOriginalEdit(index); });
+        ta.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ta.blur(); }
+            if (e.key === 'Escape') { ta.value = currentText; ta.blur(); }
+        });
+    };
+
+    function saveOriginalEdit(index) {
+        var ta = document.getElementById('editarea-orig-' + index);
+        if (!ta) return;
+        var newText = ta.value;
+        var cell = document.getElementById('orig-' + index);
+        fetch('/api/edit-original/' + currentTaskId, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ index: index, text: newText })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    editorOriginals[index].text = newText;
+                    cell.className = 'col-original entry-original edited';
+                    cell.innerHTML = esc(newText) + ' <span class="badge-edited">已改</span>';
+                    showToast('原文第' + (index+1) + '条已更新', 'success');
+                } else { showToast(data.error || '保存失败', 'error'); }
+            });
     }
 
     function updateStats(total) {
