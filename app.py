@@ -100,8 +100,11 @@ def is_auth_enabled():
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if is_auth_enabled() and not session.get('logged_in'):
-            # API requests get JSON error, page requests get redirected
+        if not is_auth_enabled():
+            if request.path.startswith('/api/'):
+                return jsonify({'error': '未初始化', 'setup_required': True}), 401
+            return redirect(url_for('setup'))
+        if not session.get('logged_in'):
             if request.path.startswith('/api/'):
                 return jsonify({'error': '未登录', 'auth_required': True}), 401
             return redirect(url_for('login'))
@@ -109,10 +112,34 @@ def login_required(f):
     return decorated
 
 
+@app.route('/setup', methods=['GET', 'POST'])
+def setup():
+    if is_auth_enabled():
+        return redirect(url_for('login'))
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        if not username or not password:
+            error = '用户名和密码不能为空'
+        elif len(password) < 4:
+            error = '密码至少4位'
+        elif password != confirm:
+            error = '两次输入的密码不一致'
+        else:
+            save_auth(username, password)
+            session.clear()
+            session['logged_in'] = True
+            session.permanent = True
+            return redirect(url_for('index'))
+    return render_template('setup.html', error=error, version=APP_VERSION)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if not is_auth_enabled():
-        return redirect(url_for('index'))
+        return redirect(url_for('setup'))
     error = None
     if request.method == 'POST':
         username = request.form.get('username', '')
@@ -138,6 +165,7 @@ def auth_status():
     return jsonify({
         'auth_enabled': is_auth_enabled(),
         'logged_in': bool(session.get('logged_in')),
+        'setup_required': not is_auth_enabled(),
     })
 
 
