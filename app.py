@@ -615,10 +615,19 @@ def retranslate_entry(task_id):
         if len(task['logs']) > 200:
             task['logs'] = task['logs'][-200:]
 
-    _log(f'开始翻译: {total} 条字幕, 引擎={engine}, 目标语言={target}')
+    _log(f'重新翻译第{index+1}条, 引擎={engine}, 目标语言={target}')
     if engine == 'llm':
         from translator import translate_llm
         func = translate_llm
+    elif engine == 'google':
+        from translator import translate_google
+        func = translate_google
+    elif engine == 'deepl':
+        from translator import translate_deepl
+        func = translate_deepl
+    elif engine == 'libre':
+        from translator import translate_libre
+        func = translate_libre
     else:
         engine_info = ENGINES.get(engine, ENGINES['google'])
         func = engine_info['func']
@@ -627,8 +636,9 @@ def retranslate_entry(task_id):
             translated = func(original_text, source=source, target=target, api_key=api_key, base_url=base_url or 'http://localhost:5001')
         elif engine == 'deepl':
             translated = func(original_text, source=source, target=target, api_key=api_key)
+        elif engine == 'google':
+            translated = func(original_text, source=source, target=target, api_key=api_key, endpoint=load_google_endpoint())
         elif engine == 'llm':
-            _log(f'第 {i+1}-{min(i+len(batch), total)} 条: 发送到LLM翻译...')
             translated = func(original_text, source=source, target=target, api_key=api_key, base_url=base_url, model=model)
         else:
             translated = func(original_text, source=source, target=target, api_key=api_key)
