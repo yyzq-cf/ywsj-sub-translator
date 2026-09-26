@@ -95,7 +95,6 @@
                 <button class="btn btn-secondary btn-sm" onclick="cleanupCache()">🧹 清理缓存</button>
             </div>
         </div>
-
     </div>
 
     <!-- Config List -->
@@ -166,11 +165,6 @@
             <div class="form-group">
                 <label>选择服务商</label>
                 <select id="tapiPreset" onchange="onTapiPresetChange()">
-    var keyLabels = document.querySelectorAll('#tapiAddForm .form-group label');
-    if (keyLabels.length >= 2) {
-        keyLabels[0].innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
-        keyLabels[1].textContent = p.secret_name;
-    }
                     <option value="">— 选择 —</option>
                 </select>
             </div>
@@ -184,9 +178,9 @@
         <div class="form-row">
             <div class="form-group">
                 <label>API Key / ID <a id="tapiKeyLink" href="#" target="_blank" style="font-size:12px; display:none;">获取 →</a></label>
-                <input type="text" id="tapiKey" placeholder="APP ID / SecretId">
+                <input type="text" id="tapiKey" placeholder="APP ID / SecretId / DeepL Auth Key">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="tapiSecretGroup">
                 <label>Secret Key / 密钥</label>
                 <input type="password" id="tapiSecret" placeholder="密钥">
             </div>
@@ -426,15 +420,16 @@ function onTapiPresetChange() {
     var p = JSON.parse(sel.value);
     document.getElementById('tapiName').value = p.name;
     // Update labels with preset-specific names
-    var keyLabels = document.querySelectorAll('#tapiAddForm .form-group label');
+    var keyLabel = document.querySelector('#tapiAddForm .form-row .form-group label[for]');
+    var keyLabels = document.querySelectorAll('#tapiAddForm .form-row:nth-of-type(3) .form-group label');
     if (keyLabels.length >= 2) {
         keyLabels[0].innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
         keyLabels[1].textContent = p.secret_name;
     }
     // Hide secret field for DeepL (no secret needed)
-    var secretField = document.querySelectorAll('#tapiAddForm .form-group')[1];
-    if (secretField) {
-        secretField.style.display = (p.engine === 'deepl') ? 'none' : 'block';
+    var secretGroup = document.getElementById('tapiSecretGroup');
+    if (secretGroup) {
+        secretGroup.style.display = (p.engine === 'deepl') ? 'none' : 'block';
     }
 }
 
@@ -474,6 +469,7 @@ function showTapiAddForm() {
     document.getElementById('tapiName').value = '';
     document.getElementById('tapiKey').value = '';
     document.getElementById('tapiSecret').value = '';
+    document.getElementById('tapiSecretGroup').style.display = 'block';
     document.getElementById('tapiSaveBtn').textContent = '💾 保存';
     document.getElementById('tapiAddForm').style.display = 'block';
 }
@@ -495,7 +491,7 @@ function saveTapiConfig() {
     if (tapiEditingId) {
         var body = { name: name };
         if (apiKey) body.api_key = apiKey;
-        if (secretKey) body.secret_key = secretKey;
+        if (secretKey && engine !== 'deepl') body.secret_key = secretKey;
         fetch('/api/translate-api-configs/' + tapiEditingId, {
             method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
         }).then(function(r){return r.json();}).then(function(data){
@@ -505,7 +501,7 @@ function saveTapiConfig() {
     } else {
         fetch('/api/translate-api-configs', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name: name, engine: engine, api_key: apiKey, secret_key: secretKey })
+            body: JSON.stringify({ name: name, engine: engine, api_key: apiKey, secret_key: (engine === 'deepl' ? '' : secretKey) })
         }).then(function(r){return r.json();}).then(function(data){
             if (data.ok) { showToast('配置已添加', 'success'); hideTapiAddForm(); loadTapiConfigs(); }
             else { showToast(data.error || '添加失败', 'error'); }
@@ -529,12 +525,9 @@ function editTapiConfig(id) {
         document.getElementById('tapiName').value = cfg.name || '';
         document.getElementById('tapiKey').value = cfg.api_key || '';
         document.getElementById('tapiSecret').value = cfg.secret_key || '';
-        document.getElementById('tapiSaveBtn').textContent = '💾 更新';
         // Hide secret field for DeepL (no secret needed)
-        var secretField = document.querySelectorAll('#tapiAddForm .form-group')[1];
-        if (secretField) {
-            secretField.style.display = (cfg.engine === 'deepl') ? 'none' : 'block';
-        }
+        document.getElementById('tapiSecretGroup').style.display = (cfg.engine === 'deepl') ? 'none' : 'block';
+        document.getElementById('tapiSaveBtn').textContent = '💾 更新';
         document.getElementById('tapiAddForm').style.display = 'block';
         document.getElementById('tapiName').focus();
     });
