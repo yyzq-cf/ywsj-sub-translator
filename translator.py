@@ -5,6 +5,7 @@ Translation module - supports multiple translation engines.
 import requests
 import time
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
