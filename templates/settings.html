@@ -530,6 +530,11 @@ function editTapiConfig(id) {
         document.getElementById('tapiKey').value = cfg.api_key || '';
         document.getElementById('tapiSecret').value = cfg.secret_key || '';
         document.getElementById('tapiSaveBtn').textContent = '💾 更新';
+        // Hide secret field for DeepL (no secret needed)
+        var secretField = document.querySelectorAll('#tapiAddForm .form-group')[1];
+        if (secretField) {
+            secretField.style.display = (cfg.engine === 'deepl') ? 'none' : 'block';
+        }
         document.getElementById('tapiAddForm').style.display = 'block';
         document.getElementById('tapiName').focus();
     });
