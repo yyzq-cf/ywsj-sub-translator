@@ -31,31 +31,37 @@ LANG_MAP = {
 
 
 def translate_google(text, source='auto', target='zh-CN', api_key=''):
-    """Use Google Translate (free endpoint) with 429 retry."""
-    url = 'https://translate.googleapis.com/translate_a/single'
-    params = {
-        'client': 'gtx',
-        'dt': 't',
-        'sl': source,
-        'tl': target,
-        'q': text,
+    """Use Google Translate (free endpoint) with fallback endpoints."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': '*/*',
     }
-    for attempt in range(5):
+    # Primary: clients5 endpoint (no 429 issues), Fallback: googleapis
+    endpoints = [
+        ('https://clients5.google.com/translate_a/t', 'dict-chrome-ex'),
+        ('https://translate.googleapis.com/translate_a/single', 'gtx'),
+    ]
+    for url, client in endpoints:
         try:
-            resp = requests.get(url, params=params, timeout=15)
+            params = {'client': client, 'sl': source, 'tl': target, 'q': text}
+            if client == 'gtx':
+                params['dt'] = 't'
+            resp = requests.get(url, params=params, headers=headers, timeout=15)
             if resp.status_code == 429:
-                wait = (attempt + 1) * 2
-                logger.warning(f'Google 429 rate limited, retry {attempt+1}/5 after {wait}s')
-                time.sleep(wait)
+                time.sleep(1)
                 continue
             resp.raise_for_status()
             data = resp.json()
-            return ''.join(part[0] for part in data[0] if part[0])
-        except requests.exceptions.HTTPError as e:
-            if resp.status_code == 429 and attempt < 4:
-                continue
-            raise
-    raise Exception('Google翻译请求过于频繁(429)，重试5次后仍失败，请稍后重试或更换翻译引擎')
+            if client == 'dict-chrome-ex':
+                # clients5 returns [["translated text","source_lang"]]
+                if isinstance(data, list) and data and isinstance(data[0], list):
+                    return data[0][0] if isinstance(data[0][0], str) else ''.join(str(x) for x in data[0] if x)
+                return str(data)
+            else:
+                return ''.join(part[0] for part in data[0] if part[0])
+        except Exception:
+            continue
+    raise Exception('Google翻译暂时不可用(429)，请稍后重试或更换翻译引擎')
 
 
 def translate_deepl(text, source='auto', target='ZH', api_key=''):

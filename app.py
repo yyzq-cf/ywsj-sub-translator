@@ -304,7 +304,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         func = engine_info['func']
     results = []
     errors = []
-    batch_size = 1  # Google free API: translate one by one to avoid 429
+    batch_size = 10
     if engine == 'llm':
         batch_size = 10
 
@@ -409,7 +409,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
                             errors.append(f'Line {i+idx+1}: {str(e)}')
                             _log(f'第 {i+idx+1} 条翻译失败: {str(e)[:50]}')
                 import time
-                time.sleep(1.5)
+                time.sleep(0.3)
             except Exception as e:
                 errors.append(f'Batch {i // batch_size + 1}: {str(e)}')
                 logger.error(f'Batch {i//batch_size+1} failed: {e}')
