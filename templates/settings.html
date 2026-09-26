@@ -455,7 +455,7 @@ function loadTapiConfigs() {
             var secretInfo = c.has_secret ? (c.secret_key_masked || '***') : '未设置';
             div.innerHTML = '<div class="config-info">' +
                 '<div class="config-name">' + esc(c.name) + '</div>' +
-                '<div class="config-meta">引擎: ' + esc(c.engine) + ' · Key: ' + keyInfo + ' · Secret: ' + secretInfo + '</div>' +
+                '<div class="config-meta">引擎: ' + esc(c.engine) + ' · Key: ' + keyInfo + (c.engine === 'deepl' ? '' : ' · Secret: ' + secretInfo) + '</div>' +
                 '</div>' +
                 '<div class="config-actions">' +
                 '<button class="btn btn-secondary btn-sm" onclick="testTapiConfigById(\''+c.id+'\')">🔌测试</button>' +
