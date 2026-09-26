@@ -44,6 +44,30 @@ def _load_secret_key():
 
 app.secret_key = _load_secret_key()
 
+# ===== Brute force protection =====
+login_attempts = {}  # {ip: {'count': N, 'locked_until': timestamp}}
+
+def check_login_allowed(ip):
+    allowed = True
+    wait = 0
+    entry = login_attempts.get(ip)
+    if entry and entry.get('locked_until', 0) > time.time():
+        allowed = False
+        wait = int(entry['locked_until'] - time.time())
+    return allowed, wait
+
+def record_failed_login(ip):
+    entry = login_attempts.get(ip, {'count': 0, 'locked_until': 0})
+    entry['count'] += 1
+    if entry['count'] >= 5:
+        entry['locked_until'] = time.time() + 900
+        entry['count'] = 0
+    login_attempts[ip] = entry
+
+def clear_failed_login(ip):
+    login_attempts.pop(ip, None)
+
+
 # ===== SQLite database =====
 DB_FILE = os.path.join(DATA_DIR, "app.db")
 
