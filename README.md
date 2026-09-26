@@ -76,9 +76,9 @@ docker compose up -d
 | LLM 大模型 | OpenRouter | ✅ | 聚合平台，有免费模型 |
 | LLM 大模型 | Ollama 本地 | ❌ | 本地部署，无需联网 |
 | LLM 大模型 | 自定义 | ✅ | 任意 OpenAI 兼容 API |
-| 翻译 API | 腾讯翻译 | ✅ | 需 SecretId + SecretKey |
-| 翻译 API | 百度翻译 | ✅ | 需 APP ID + 密钥 |
-| 翻译 API | 有道翻译 | ✅ | 需应用 ID + 应用密钥 |
+| 翻译 API | 腾讯翻译 | ✅ | 需 SecretId + SecretKey，免费额度 500万字符/月 |
+| 翻译 API | 百度翻译 | ✅ | 需 APP ID + 密钥，免费额度 1万字符/月（QPS=1） |
+| 翻译 API | 有道翻译 | ✅ | 需应用 ID + 应用密钥，免费额度 100元体验金（约40万字符） |
 
 > LLM 大模型和翻译 API 均在 `/settings` 页面统一管理，支持添加多个配置、测试连接、自动获取可用模型列表。
 
