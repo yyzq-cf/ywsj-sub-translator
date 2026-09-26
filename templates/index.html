@@ -664,7 +664,8 @@
                     // Live render entries
                     if (data.entries) {
                         editorEntries = data.entries;
-                        renderEditor(data.entries, data.original_entries || [], firstRender);
+                        editorOriginals = data.original_entries || editorOriginals;
+                        renderEditor(data.entries, editorOriginals, firstRender);
                         if (firstRender) {
                             document.getElementById('editorSection').classList.add('show');
                             firstRender = false;
@@ -721,10 +722,17 @@
                 var cell = document.getElementById('trans-' + j);
                 if (cell && !cell.querySelector('textarea')) {
                     var isEd = editedFlags[j];
-                    var origText2 = originals[j] ? originals[j].text : '';
-                    // Only update if not being edited
                     cell.className = 'col-translated entry-translated' + (isEd ? ' edited' : '');
                     cell.innerHTML = esc(entries[j].text) + (isEd ? ' <span class="badge-edited">已改</span>' : '');
+                }
+                // Also update original text cell if not being edited
+                var origCell = document.getElementById('orig-' + j);
+                if (origCell && !origCell.querySelector('textarea')) {
+                    var origText = originals[j] ? originals[j].text : '';
+                    var isOrigEdited = origCell.className.indexOf('edited') >= 0;
+                    if (!isOrigEdited) {
+                        origCell.innerHTML = esc(origText);
+                    }
                 }
             }
         }
