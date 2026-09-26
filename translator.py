@@ -404,6 +404,7 @@ import random
 
 # Traditional translation API presets
 TRANSLATE_API_PRESETS = [
+    {'name': 'DeepL', 'engine': 'deepl', 'key_name': 'API Key', 'secret_name': '(不需要)', 'key_url': 'https://www.deepl.com/pro-api'},
     {'name': '腾讯翻译', 'engine': 'tencent', 'key_name': 'SecretId', 'secret_name': 'SecretKey', 'key_url': 'https://console.cloud.tencent.com/cam/capi'},
     {'name': '百度翻译', 'engine': 'baidu', 'key_name': 'APP ID', 'secret_name': '密钥', 'key_url': 'https://fanyi-api.baidu.com/api/trans/product/desktop'},
     {'name': '有道翻译', 'engine': 'youdao', 'key_name': '应用ID', 'secret_name': '应用密钥', 'key_url': 'https://ai.youdao.com/console/'},
@@ -425,7 +426,6 @@ LLM_PRESETS = [
 
 ENGINES = {
     'google': {'func': translate_google, 'label': 'Google翻译', 'needs_key': False, 'default_target': 'zh-CN'},
-    'deepl': {'func': translate_deepl, 'label': 'DeepL', 'needs_key': True, 'default_target': 'ZH'},
     'libre': {'func': translate_libre, 'label': 'LibreTranslate', 'needs_key': False, 'default_target': 'zh'},
 }
 

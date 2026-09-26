@@ -471,6 +471,9 @@ def start_translate():
                 engine = cfg['engine']
                 api_key = cfg.get('api_key', '')
                 secret_key = cfg.get('secret_key', '')
+                # DeepL uses ZH instead of zh-CN for target
+                if engine == 'deepl' and target == 'zh-CN':
+                    target = 'ZH'
                 break
     target = request.form.get('target', 'zh-CN')
     api_key = request.form.get('api_key', '')
@@ -902,7 +905,12 @@ def test_translate_api():
         api_key = data.get('api_key', '').strip()
         secret_key = data.get('secret_key', '').strip()
 
-    if not api_key or not secret_key:
+    # DeepL only needs api_key, others need both
+    if engine == 'deepl':
+        if not api_key:
+            return jsonify({'ok': False, 'message': '请填写 API Key'})
+        secret_key = ''
+    elif not api_key or not secret_key:
         return jsonify({'ok': False, 'message': '请填写完整的Key和密钥'})
 
     try:
@@ -915,6 +923,9 @@ def test_translate_api():
         elif engine == 'youdao':
             from translator import translate_youdao
             result = translate_youdao('Hello', source='auto', target='zh-CHS', api_key=api_key, secret_key=secret_key)
+        elif engine == 'deepl':
+            from translator import translate_deepl
+            result = translate_deepl('Hello', source='en', target='ZH', api_key=api_key)
         else:
             return jsonify({'ok': False, 'message': '未知的翻译引擎'})
         return jsonify({'ok': True, 'message': f'连接成功，翻译结果: {result}'})

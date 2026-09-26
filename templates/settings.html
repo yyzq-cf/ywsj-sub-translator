@@ -152,7 +152,7 @@
 
     <!-- Translate API Config -->
     <div class="card">
-        <div class="card-title">🌐 翻译API配置（腾讯/百度/有道）</div>
+        <div class="card-title">🌐 翻译API配置（DeepL/腾讯/百度/有道）</div>
         <div id="tapiConfigList"></div>
         <div class="btn-row">
             <button class="btn btn-secondary btn-sm" onclick="showTapiAddForm()">➕ 添加翻译API</button>
@@ -431,6 +431,11 @@ function onTapiPresetChange() {
         keyLabels[0].innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
         keyLabels[1].textContent = p.secret_name;
     }
+    // Hide secret field for DeepL (no secret needed)
+    var secretField = document.querySelectorAll('#tapiAddForm .form-group')[1];
+    if (secretField) {
+        secretField.style.display = (p.engine === 'deepl') ? 'none' : 'block';
+    }
 }
 
 var tapiEditingId = null;
@@ -536,7 +541,13 @@ function testTapiConfig() {
     var p = JSON.parse(preset);
     var apiKey = document.getElementById('tapiKey').value.trim();
     var secretKey = document.getElementById('tapiSecret').value.trim();
-    if (!apiKey || !secretKey) { showToast('请填写Key和密钥', 'error'); return; }
+    // DeepL only needs API Key, others need both
+    if (p.engine === 'deepl') {
+        if (!apiKey) { showToast('请填写API Key', 'error'); return; }
+        secretKey = '';
+    } else {
+        if (!apiKey || !secretKey) { showToast('请填写Key和密钥', 'error'); return; }
+    }
     showToast('测试中...', '');
     fetch('/api/translate-api-configs/test', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
