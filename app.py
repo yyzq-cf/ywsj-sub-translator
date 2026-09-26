@@ -307,14 +307,24 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
     batch_size = 10
 
     def _is_already_target(text, target):
+        """Only skip if text is PURELY in the target language (no other script)."""
+        if not text or not text.strip():
+            return True
         if target.startswith('zh'):
-            return any('\u4e00' <= c <= '\u9fff' for c in text)
-        if target == 'en':
-            has_latin = any('a' <= c.lower() <= 'z' for c in text)
+            # Only skip if text is purely Chinese/numbers/punctuation (no latin letters)
             has_cjk = any('\u4e00' <= c <= '\u9fff' for c in text)
-            return has_latin and not has_cjk
+            has_latin = any('a' <= c.lower() <= 'z' for c in text)
+            return has_cjk and not has_latin
+        if target == 'en':
+            # Only skip if text is purely latin (no CJK at all)
+            has_cjk = any('\u4e00' <= c <= '\u9fff' for c in text)
+            has_hiragana = any('\u3040' <= c <= '\u309f' for c in text)
+            has_katakana = any('\u30a0' <= c <= '\u30ff' for c in text)
+            has_hangul = any('\uac00' <= c <= '\ud7af' for c in text)
+            return not (has_cjk or has_hiragana or has_katakana or has_hangul)
         if target == 'ja':
-            return any('\u3040' <= c <= '\u309f' or '\u30a0' <= c <= '\u30ff' for c in text)
+            has_rare = any('\u4e00' <= c <= '\u9fff' for c in text)
+            return False  # Japanese subtitles may contain kanji, don't skip
         if target == 'ko':
             return any('\uac00' <= c <= '\ud7af' for c in text)
         return False
