@@ -8,6 +8,7 @@ import logging
 from urllib.parse import quote
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
 from translator import (ENGINES, batch_translate, test_llm_connection, 
@@ -53,9 +54,9 @@ def load_auth():
         return None
 
 def save_auth(username, password):
-    """Save username/password to auth file."""
+    """Save username/password to auth file (password hashed)."""
     with open(AUTH_FILE, 'w') as f:
-        json.dump({'username': username, 'password': password}, f)
+        json.dump({'username': username, 'password': generate_password_hash(password)}, f)
     os.chmod(AUTH_FILE, 0o600)
 
 LLM_CONFIG_FILE = os.path.join(DATA_DIR, "llm_configs.json")
@@ -145,7 +146,7 @@ def login():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         auth = load_auth()
-        if auth and username == auth['username'] and password == auth['password']:
+        if auth and username == auth['username'] and check_password_hash(auth['password'], password):
             session.clear()
             session['logged_in'] = True
             session.permanent = True
@@ -183,7 +184,7 @@ def change_password():
     if not auth:
         return jsonify({'error': '认证未启用'}), 400
 
-    if old_password != auth['password']:
+    if not check_password_hash(auth['password'], old_password):
         return jsonify({'error': '旧密码错误'}), 403
 
     save_auth(auth['username'], new_password)
