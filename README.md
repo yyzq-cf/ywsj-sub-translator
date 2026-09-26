@@ -108,7 +108,6 @@ ywsj-sub-translator/
 
 ## 🙏 致谢
 
-- [webcaptioner](https://github.com/curtgrimes/webcaptioner) — 语音转文字 Web 应用的设计灵感来源
 - [Flask](https://flask.palletsprojects.com/) — Web 框架
 - [Gunicorn](https://gunicorn.org/) — WSGI HTTP 服务器
 - 各翻译引擎 / LLM 提供商的 API 服务
