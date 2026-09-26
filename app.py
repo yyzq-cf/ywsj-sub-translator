@@ -5,6 +5,8 @@ import uuid
 import secrets
 import threading
 import logging
+import sqlite3
+import time
 from urllib.parse import quote
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, send_file, Response, session, redirect, url_for
@@ -42,57 +44,98 @@ def _load_secret_key():
 
 app.secret_key = _load_secret_key()
 
-# ===== Auth config =====
-AUTH_FILE=os.path.join(DATA_DIR, "auth.json")
+# ===== SQLite database =====
+DB_FILE = os.path.join(DATA_DIR, "app.db")
 
+def get_db():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
+def init_db():
+    conn = get_db()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS auth (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            username TEXT NOT NULL,
+            password TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS llm_configs (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            base_url TEXT NOT NULL,
+            api_key TEXT NOT NULL,
+            model TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS translate_api_configs (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            engine TEXT NOT NULL,
+            api_key TEXT,
+            secret_key TEXT
+        );
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ===== Auth =====
 def load_auth():
-    """Load username/password from auth file."""
-    try:
-        with open(AUTH_FILE, 'r') as f:
-            return json.load(f)
-    except (OSError, IOError):
-        return None
+    conn = get_db()
+    row = conn.execute("SELECT username, password FROM auth WHERE id = 1").fetchone()
+    conn.close()
+    if row:
+        return {'username': row['username'], 'password': row['password']}
+    return None
 
 def save_auth(username, password):
-    """Save username/password to auth file (password hashed)."""
-    with open(AUTH_FILE, 'w') as f:
-        json.dump({'username': username, 'password': generate_password_hash(password)}, f)
-    os.chmod(AUTH_FILE, 0o600)
+    conn = get_db()
+    conn.execute(
+        "INSERT OR REPLACE INTO auth (id, username, password) VALUES (1, ?, ?)",
+        (username, generate_password_hash(password))
+    )
+    conn.commit()
+    conn.close()
 
-LLM_CONFIG_FILE = os.path.join(DATA_DIR, "llm_configs.json")
-
-
+# ===== LLM configs =====
 def load_llm_configs():
-    """Load LLM configurations."""
-    try:
-        with open(LLM_CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except (OSError, IOError):
-        return []
-
+    conn = get_db()
+    rows = conn.execute("SELECT id, name, base_url, api_key, model FROM llm_configs ORDER BY name").fetchall()
+    conn.close()
+    return [{'id': r['id'], 'name': r['name'], 'base_url': r['base_url'],
+             'api_key': r['api_key'], 'model': r['model']} for r in rows]
 
 def save_llm_configs(configs):
-    """Save LLM configurations."""
-    with open(LLM_CONFIG_FILE, 'w') as f:
-        json.dump(configs, f, ensure_ascii=False, indent=2)
-    os.chmod(LLM_CONFIG_FILE, 0o600)
+    conn = get_db()
+    conn.execute("DELETE FROM llm_configs")
+    for c in configs:
+        conn.execute(
+            "INSERT INTO llm_configs (id, name, base_url, api_key, model) VALUES (?, ?, ?, ?, ?)",
+            (c['id'], c.get('name',''), c.get('base_url',''), c.get('api_key',''), c.get('model',''))
+        )
+    conn.commit()
+    conn.close()
 
-
-TRANSLATE_API_CONFIG_FILE = os.path.join(DATA_DIR, "translate_api_configs.json")
-
-
+# ===== Translate API configs =====
 def load_translate_api_configs():
-    try:
-        with open(TRANSLATE_API_CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except (OSError, IOError):
-        return []
-
+    conn = get_db()
+    rows = conn.execute("SELECT id, name, engine, api_key, secret_key FROM translate_api_configs ORDER BY name").fetchall()
+    conn.close()
+    return [{'id': r['id'], 'name': r['name'], 'engine': r['engine'],
+             'api_key': r['api_key'] or '', 'secret_key': r['secret_key'] or ''} for r in rows]
 
 def save_translate_api_configs(configs):
-    with open(TRANSLATE_API_CONFIG_FILE, 'w') as f:
-        json.dump(configs, f, ensure_ascii=False, indent=2)
-    os.chmod(TRANSLATE_API_CONFIG_FILE, 0o600)
+    conn = get_db()
+    conn.execute("DELETE FROM translate_api_configs")
+    for c in configs:
+        conn.execute(
+            "INSERT INTO translate_api_configs (id, name, engine, api_key, secret_key) VALUES (?, ?, ?, ?, ?)",
+            (c['id'], c.get('name',''), c.get('engine',''), c.get('api_key',''), c.get('secret_key',''))
+        )
+    conn.commit()
+    conn.close()
 
 
 def is_auth_enabled():
