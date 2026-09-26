@@ -177,11 +177,11 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label>API Key / ID <a id="tapiKeyLink" href="#" target="_blank" style="font-size:12px; display:none;">获取 →</a></label>
+                <label id="tapiKeyLabel">API Key / ID <a id="tapiKeyLink" href="#" target="_blank" style="font-size:12px; display:none;">获取 →</a></label>
                 <input type="text" id="tapiKey" placeholder="APP ID / SecretId / DeepL Auth Key">
             </div>
             <div class="form-group" id="tapiSecretGroup">
-                <label>Secret Key / 密钥</label>
+                <label id="tapiSecretLabel">Secret Key / 密钥</label>
                 <input type="password" id="tapiSecret" placeholder="密钥">
             </div>
         </div>
@@ -420,11 +420,13 @@ function onTapiPresetChange() {
     var p = JSON.parse(sel.value);
     document.getElementById('tapiName').value = p.name;
     // Update labels with preset-specific names
-    var keyLabel = document.querySelector('#tapiAddForm .form-row .form-group label[for]');
-    var keyLabels = document.querySelectorAll('#tapiAddForm .form-row:nth-of-type(3) .form-group label');
-    if (keyLabels.length >= 2) {
-        keyLabels[0].innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
-        keyLabels[1].textContent = p.secret_name;
+    var tapiKeyLabel = document.getElementById('tapiKeyLabel');
+    var tapiSecretLabel = document.getElementById('tapiSecretLabel');
+    if (tapiKeyLabel) {
+        tapiKeyLabel.innerHTML = p.key_name + ' <a id="tapiKeyLink" href="' + (p.key_url || '#') + '" target="_blank" style="font-size:12px;' + (p.key_url ? '' : 'display:none;') + '">获取 Key →</a>';
+    }
+    if (tapiSecretLabel) {
+        tapiSecretLabel.textContent = p.secret_name;
     }
     // Hide secret field for DeepL (no secret needed)
     var secretGroup = document.getElementById('tapiSecretGroup');
