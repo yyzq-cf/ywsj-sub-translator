@@ -8,4 +8,4 @@ services:
       - ./data:/data
     environment:
       - APP_VERSION=${APP_VERSION:-dev}
-    restart: unless-stopped
+    restart: always

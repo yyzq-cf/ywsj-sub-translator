@@ -27,7 +27,7 @@ docker run -d \
   --name sub-translator \
   -p 5200:5200 \
   -v ./data:/data \
-  --restart unless-stopped \
+  --restart always \
   ywsj/sub-translator:latest
 ```
 
@@ -42,7 +42,7 @@ services:
       - "5200:5200"
     volumes:
       - ./data:/data
-    restart: unless-stopped
+    restart: always
 ```
 
 ```bash
