@@ -30,18 +30,30 @@ LANG_MAP = {
 }
 
 
-def translate_google(text, source='auto', target='zh-CN', api_key=''):
-    """Use Google Translate (free endpoint) with fallback endpoints."""
+GOOGLE_ENDPOINTS = {
+    'clients5': {'url': 'https://clients5.google.com/translate_a/t', 'client': 'dict-chrome-ex', 'label': 'clients5 (推荐，不限流)'},
+    'googleapis': {'url': 'https://translate.googleapis.com/translate_a/single', 'client': 'gtx', 'label': 'googleapis (可能限流)'},
+    'auto': {'url': '', 'client': '', 'label': '自动选择 (clients5优先，失败回退)'},
+}
+
+def translate_google(text, source='auto', target='zh-CN', api_key='', endpoint='auto'):
+    """Use Google Translate (free endpoint) with selectable endpoints."""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': '*/*',
     }
-    # Primary: clients5 endpoint (no 429 issues), Fallback: googleapis
-    endpoints = [
-        ('https://clients5.google.com/translate_a/t', 'dict-chrome-ex'),
-        ('https://translate.googleapis.com/translate_a/single', 'gtx'),
-    ]
-    for url, client in endpoints:
+    
+    if endpoint == 'auto' or endpoint not in GOOGLE_ENDPOINTS:
+        # Try clients5 first, then googleapis
+        try_endpoints = [
+            ('https://clients5.google.com/translate_a/t', 'dict-chrome-ex'),
+            ('https://translate.googleapis.com/translate_a/single', 'gtx'),
+        ]
+    else:
+        ep = GOOGLE_ENDPOINTS[endpoint]
+        try_endpoints = [(ep['url'], ep['client'])]
+    
+    for url, client in try_endpoints:
         try:
             params = {'client': client, 'sl': source, 'tl': target, 'q': text}
             if client == 'gtx':
@@ -53,7 +65,6 @@ def translate_google(text, source='auto', target='zh-CN', api_key=''):
             resp.raise_for_status()
             data = resp.json()
             if client == 'dict-chrome-ex':
-                # clients5 returns [["translated text","source_lang"]]
                 if isinstance(data, list) and data and isinstance(data[0], list):
                     return data[0][0] if isinstance(data[0][0], str) else ''.join(str(x) for x in data[0] if x)
                 return str(data)
@@ -61,7 +72,7 @@ def translate_google(text, source='auto', target='zh-CN', api_key=''):
                 return ''.join(part[0] for part in data[0] if part[0])
         except Exception:
             continue
-    raise Exception('Google翻译暂时不可用(429)，请稍后重试或更换翻译引擎')
+    raise Exception('Google翻译暂时不可用(429)，可在翻译页面切换接口或更换翻译引擎')
 
 
 def translate_deepl(text, source='auto', target='ZH', api_key=''):

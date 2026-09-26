@@ -15,7 +15,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from subtitle_parser import parse_subtitle, rebuild, rebuild_bilingual
 from translator import (ENGINES, batch_translate, test_llm_connection, 
     LLM_PRESETS, fetch_llm_models, TRANSLATE_API_PRESETS,
-    translate_tencent, translate_baidu, translate_youdao)
+    translate_tencent, translate_baidu, translate_youdao, GOOGLE_ENDPOINTS)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -924,6 +924,33 @@ def cleanup_docker():
     except Exception as e:
         return jsonify({'ok': False, 'message': f'清理失败: {str(e)[:100]}'})
 
+
+# ===== Google endpoint config =====
+GOOGLE_ENDPOINT_FILE = os.path.join(DATA_DIR, "google_endpoint.txt")
+
+def load_google_endpoint():
+    try:
+        with open(GOOGLE_ENDPOINT_FILE, 'r') as f:
+            return f.read().strip()
+    except:
+        return 'auto'
+
+def save_google_endpoint(endpoint):
+    with open(GOOGLE_ENDPOINT_FILE, 'w') as f:
+        f.write(endpoint)
+
+@app.route('/api/google-endpoint', methods=['GET'])
+@login_required
+def get_google_endpoint():
+    return jsonify({'endpoint': load_google_endpoint(), 'endpoints': GOOGLE_ENDPOINTS})
+
+@app.route('/api/google-endpoint', methods=['POST'])
+@login_required
+def set_google_endpoint():
+    data = request.get_json()
+    endpoint = data.get('endpoint', 'auto')
+    save_google_endpoint(endpoint)
+    return jsonify({'ok': True})
 
 @app.route('/health')
 def health():

@@ -248,6 +248,14 @@
                 <input type="text" id="baseUrl" placeholder="http://localhost:5001" value="http://localhost:5001">
             </div>
         </div>
+        <div class="form-row" id="googleEndpointRow" style="display:none;">
+            <div class="form-group">
+                <label>Google翻译接口</label>
+                <select id="googleEndpoint" onchange="saveGoogleEndpoint()">
+                    <option value="auto">自动选择（推荐）</option>
+                </select>
+            </div>
+        </div>
 
         <div class="btn-row">
             <button class="btn btn-secondary" onclick="previewFile()">👁️ 预览前10条</button>
@@ -459,12 +467,41 @@
         if (!found) targetSel.value = defaultTarget;
         document.getElementById('apiKeyRow').style.display = 'none';
         document.getElementById('baseUrlRow').style.display = 'none';
+        document.getElementById('googleEndpointRow').style.display = 'none';
         if (engine === 'deepl') document.getElementById('apiKeyRow').style.display = 'flex';
         if (engine === 'libre') { document.getElementById('apiKeyRow').style.display = 'flex'; document.getElementById('baseUrlRow').style.display = 'flex'; }
+        if (engine === 'google') { document.getElementById('googleEndpointRow').style.display = 'flex'; }
         // LLM configs need no extra fields - everything is in the saved config
         var count = langs.length - 1;
         document.getElementById('langCount').textContent = '支持 ' + count + ' 种语言';
     };
+
+
+    // ===== Google endpoint config =====
+    function loadGoogleEndpoint() {
+        fetch('/api/google-endpoint').then(function(r){return r.json();}).then(function(data){
+            var sel = document.getElementById('googleEndpoint');
+            // Add options from server
+            var epObj = data.endpoints || {};
+            for (var key in epObj) {
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = epObj[key].label;
+                if (key === data.endpoint) opt.selected = true;
+                if (key === 'auto') continue; // skip, already in HTML
+                sel.appendChild(opt);
+            }
+            sel.value = data.endpoint || 'auto';
+        });
+    }
+    window.saveGoogleEndpoint = function() {
+        var ep = document.getElementById('googleEndpoint').value;
+        fetch('/api/google-endpoint', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({endpoint: ep})
+        });
+    };
+    loadGoogleEndpoint();
 
     // ===== File handling =====
     document.getElementById('fileInput').addEventListener('change', function(e) {
