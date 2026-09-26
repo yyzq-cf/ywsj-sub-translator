@@ -186,15 +186,26 @@ def login():
         return redirect(url_for('setup'))
     error = None
     if request.method == 'POST':
-        username = request.form.get('username', '')
-        password = request.form.get('password', '')
-        auth = load_auth()
-        if auth and username == auth['username'] and check_password_hash(auth['password'], password):
-            session.clear()
-            session['logged_in'] = True
-            session.permanent = True
-            return redirect(url_for('index'))
-        error = '用户名或密码错误'
+        ip = request.remote_addr or '0.0.0.0'
+        allowed, wait = check_login_allowed(ip)
+        if not allowed:
+            error = f'登录尝试过多，已锁定，请 {wait} 秒后重试'
+        else:
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')
+            auth = load_auth()
+            if auth and username == auth['username'] and check_password_hash(auth['password'], password):
+                clear_failed_login(ip)
+                session.clear()
+                session['logged_in'] = True
+                session.permanent = True
+                return redirect(url_for('index'))
+            record_failed_login(ip)
+            remaining = 5 - login_attempts.get(ip, {}).get('count', 0)
+            if remaining > 0:
+                error = f'用户名或密码错误，剩余尝试次数 {remaining} 次'
+            else:
+                error = '登录失败次数过多，已锁定 15 分钟'
     return render_template('login.html', error=error, version=APP_VERSION)
 
 
