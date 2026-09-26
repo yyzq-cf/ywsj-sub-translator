@@ -106,6 +106,12 @@ ywsj-sub-translator/
     └── docker-publish.yml # CI 自动构建发布
 ```
 
+## ☕ 请作者喝杯咖啡
+
+如果这个项目对你有帮助，欢迎请作者喝杯咖啡 ☕️
+
+![打赏码](assets/donation.jpg)
+
 ## 🙏 致谢
 
 - [Flask](https://flask.palletsprojects.com/) — Web 框架
