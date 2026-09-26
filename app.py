@@ -304,7 +304,9 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
         func = engine_info['func']
     results = []
     errors = []
-    batch_size = 10
+    batch_size = 5
+    if engine == 'llm':
+        batch_size = 10
 
     def _is_already_target(text, target):
         """Only skip if text is PURELY in the target language (no other script)."""
@@ -407,7 +409,7 @@ def run_translation_task(task_id, entries, content, engine, source, target, api_
                             errors.append(f'Line {i+idx+1}: {str(e)}')
                             _log(f'第 {i+idx+1} 条翻译失败: {str(e)[:50]}')
                 import time
-                time.sleep(0.3)
+                time.sleep(1.0)
             except Exception as e:
                 errors.append(f'Batch {i // batch_size + 1}: {str(e)}')
                 logger.error(f'Batch {i//batch_size+1} failed: {e}')

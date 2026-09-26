@@ -30,7 +30,7 @@ LANG_MAP = {
 
 
 def translate_google(text, source='auto', target='zh-CN', api_key=''):
-    """Use Google Translate (free endpoint)."""
+    """Use Google Translate (free endpoint) with 429 retry."""
     url = 'https://translate.googleapis.com/translate_a/single'
     params = {
         'client': 'gtx',
@@ -39,10 +39,22 @@ def translate_google(text, source='auto', target='zh-CN', api_key=''):
         'tl': target,
         'q': text,
     }
-    resp = requests.get(url, params=params, timeout=10)
-    resp.raise_for_status()
-    data = resp.json()
-    return ''.join(part[0] for part in data[0] if part[0])
+    for attempt in range(5):
+        try:
+            resp = requests.get(url, params=params, timeout=15)
+            if resp.status_code == 429:
+                wait = (attempt + 1) * 2
+                logger.warning(f'Google 429 rate limited, retry {attempt+1}/5 after {wait}s')
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            return ''.join(part[0] for part in data[0] if part[0])
+        except requests.exceptions.HTTPError as e:
+            if resp.status_code == 429 and attempt < 4:
+                continue
+            raise
+    raise Exception('Google翻译请求过于频繁(429)，重试5次后仍失败，请稍后重试或更换翻译引擎')
 
 
 def translate_deepl(text, source='auto', target='ZH', api_key=''):
